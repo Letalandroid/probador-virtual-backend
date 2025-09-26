@@ -1,0 +1,183 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// Usuarios del sistema
+model User {
+  id         String   @id @default(uuid())
+  email      String   @unique
+  password   String?
+  full_name  String?
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  // Relaciones
+  profile  Profile?
+  roles    UserRoleAssignment[]
+  products Product[]             @relation("UserProducts")
+  orders   Order[]
+  views    ProductView[]
+  tryOns   VirtualTryOnSession[]
+}
+
+/// Categorías de productos
+model Category {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  image_url   String?
+  is_active   Boolean  @default(true)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  // Relaciones
+  products Product[]
+}
+
+/// Productos del catálogo
+model Product {
+  id             String   @id @default(uuid())
+  name           String
+  description    String?
+  price          Decimal  @db.Decimal(10, 2)
+  category_id    String
+  brand          String?
+  color          String?
+  sizes          String[] @default([])
+  images         String[] @default([])
+  stock_quantity Int      @default(0)
+  is_active      Boolean  @default(true)
+  gender         Gender?
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+  created_by     String?
+
+  // Relaciones
+  category      Category              @relation(fields: [category_id], references: [id])
+  user          User?                 @relation("UserProducts", fields: [created_by], references: [id])
+  order_items   OrderItem[]
+  views         ProductView[]
+  tryOnSessions VirtualTryOnSession[]
+}
+
+/// Pedidos
+model Order {
+  id               String        @id @default(uuid())
+  user_id          String
+  order_number     String        @unique
+  total_amount     Decimal       @db.Decimal(10, 2)
+  status           OrderStatus   @default(pending)
+  payment_status   PaymentStatus @default(pending)
+  payment_method   String?
+  shipping_address Json?
+  notes            String?
+  created_at       DateTime      @default(now())
+  updated_at       DateTime      @updatedAt
+
+  user        User        @relation(fields: [user_id], references: [id])
+  order_items OrderItem[]
+}
+
+/// Detalle de pedidos
+model OrderItem {
+  id          String   @id @default(uuid())
+  order_id    String
+  product_id  String
+  quantity    Int
+  unit_price  Decimal  @db.Decimal(10, 2)
+  total_price Decimal  @db.Decimal(10, 2)
+  size        String?
+  created_at  DateTime @default(now())
+
+  order   Order   @relation(fields: [order_id], references: [id])
+  product Product @relation(fields: [product_id], references: [id])
+}
+
+/// Registro de vistas de productos
+model ProductView {
+  id         String   @id @default(uuid())
+  product_id String
+  user_id    String?
+  view_type  String
+  created_at DateTime @default(now())
+
+  // Relaciones
+  product Product @relation(fields: [product_id], references: [id])
+  user    User?   @relation(fields: [user_id], references: [id])
+}
+
+/// Perfil extendido del usuario
+model Profile {
+  id          String   @id @default(uuid())
+  user_id     String   @unique
+  full_name   String?
+  phone       String?
+  address     String?
+  city        String?
+  postal_code String?
+  country     String   @default("Colombia")
+  avatar_url  String?
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  // Relaciones
+  user User @relation(fields: [user_id], references: [id])
+}
+
+/// Asignación de roles de usuario
+model UserRoleAssignment {
+  id          String   @id @default(uuid())
+  user_id     String
+  role        UserRole @default(client)
+  assigned_at DateTime @default(now())
+  assigned_by String?
+
+  // Relaciones
+  user User @relation(fields: [user_id], references: [id])
+}
+
+/// Sesiones del probador virtual
+model VirtualTryOnSession {
+  id               String   @id @default(uuid())
+  user_id          String?
+  product_id       String
+  user_image_url   String?
+  result_image_url String?
+  session_data     Json     @default("{}")
+  created_at       DateTime @default(now())
+
+  // Relaciones
+  user    User?   @relation(fields: [user_id], references: [id])
+  product Product @relation(fields: [product_id], references: [id])
+}
+
+/// ==== ENUMS ====
+enum Gender {
+  men
+  women
+  kids
+  unisex
+}
+
+enum UserRole {
+  client
+  admin
+}
+
+enum OrderStatus {
+  pending
+  processing
+  completed
+  cancelled
+}
+
+enum PaymentStatus {
+  pending
+  paid
+  failed
+}
