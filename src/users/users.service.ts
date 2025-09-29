@@ -1,7 +1,8 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { UpdateUserDto, ChangeUserRoleDto, ChangeUserStatusDto, UpdateProfileDto } from '../models/user.dto';
 import { Prisma } from '@prisma/client';
+import { genHash } from '../utils/bcrypt';
 
 @Injectable()
 export class UsersService {
@@ -46,7 +47,6 @@ export class UsersService {
         updateData.full_name = updateUserDto.full_name;
       }
       if (updateUserDto.password) {
-        const { genHash } = await import('../utils/bcrypt');
         updateData.password = await genHash(updateUserDto.password);
       }
 

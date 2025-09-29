@@ -1,5 +1,20 @@
 # Configuración del Backend - Probador Virtual
 
+## Instalación de pnpm
+
+Si no tienes pnpm instalado, puedes instalarlo de las siguientes maneras:
+
+```bash
+# Opción 1: Con npm (si está disponible)
+npm install -g pnpm
+
+# Opción 2: Con curl
+curl -fsSL https://get.pnpm.io/install.sh | sh -
+
+# Opción 3: Con wget
+wget -qO- https://get.pnpm.io/install.sh | sh -
+```
+
 ## Variables de Entorno
 
 Crea un archivo `.env` en la raíz del proyecto con las siguientes variables:
@@ -19,7 +34,12 @@ PORT=3000
 ## Instalación de Dependencias
 
 ```bash
-npm install @nestjs/jwt @nestjs/config bcryptjs class-validator class-transformer @nestjs/swagger
+pnpm install @nestjs/jwt @nestjs/config bcryptjs class-validator class-transformer
+```
+
+**Nota:** Swagger se puede instalar opcionalmente más tarde con:
+```bash
+pnpm install @nestjs/swagger
 ```
 
 ## Configuración de la Base de Datos
@@ -27,34 +47,37 @@ npm install @nestjs/jwt @nestjs/config bcryptjs class-validator class-transforme
 1. Asegúrate de que PostgreSQL esté ejecutándose
 2. Ejecuta las migraciones:
 ```bash
-npm run prisma:migrate
+pnpm run prisma:migrate
 ```
 
 3. Genera el cliente de Prisma:
 ```bash
-npm run prisma:generate
+pnpm run prisma:generate
 ```
 
 4. (Opcional) Ejecuta el seed para datos de prueba:
 ```bash
-npm run prisma:seed
+pnpm run prisma:seed
 ```
 
 ## Ejecutar la Aplicación
 
 ```bash
 # Desarrollo
-npm run start:dev
+pnpm run start:dev
 
 # Producción
-npm run build
-npm run start:prod
+pnpm run build
+pnpm run start:prod
 ```
 
 ## Documentación de la API
 
-Una vez que la aplicación esté ejecutándose, puedes acceder a la documentación de Swagger en:
-- http://localhost:3000/api
+Para habilitar la documentación de Swagger:
+1. Instala la dependencia: `pnpm install @nestjs/swagger`
+2. Descomenta las líneas de Swagger en `src/main.ts`
+3. Descomenta los decoradores de Swagger en los controladores
+4. Accede a: http://localhost:3000/api
 
 ## Endpoints Principales
 
