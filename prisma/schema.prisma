@@ -53,6 +53,22 @@ model Product {
   stock_quantity Int      @default(0)
   is_active      Boolean  @default(true)
   gender         Gender?
+  
+  // Campos adicionales para IA y especificaciones técnicas
+  fabric_type    String?              // Tipo de tela (algodón, poliéster, etc.)
+  fabric_composition String?          // Composición de la tela (100% algodón, 80% algodón 20% poliéster)
+  care_instructions String?           // Instrucciones de cuidado
+  season         Season?              // Temporada (verano, invierno, etc.)
+  style          String?              // Estilo (casual, formal, deportivo, etc.)
+  fit_type       FitType?             // Tipo de ajuste (slim, regular, loose)
+  
+  // Medidas en centímetros
+  measurements   Json?                // Medidas específicas del producto
+  
+  // Campos para el modelo de IA
+  ai_metadata    Json?                // Metadatos específicos para IA
+  clothing_type  String?              // Tipo de prenda para IA (shirt, dress, jacket, etc.)
+  
   created_at     DateTime @default(now())
   updated_at     DateTime @updatedAt
   created_by     String?
@@ -121,7 +137,7 @@ model Profile {
   city        String?
   postal_code String?
   country     String   @default("Colombia")
-  avatar_url  String?
+  avatar_url  String?  // URL de la imagen de perfil en Supabase Storage
   created_at  DateTime @default(now())
   updated_at  DateTime @updatedAt
 
@@ -180,4 +196,20 @@ enum PaymentStatus {
   pending
   paid
   failed
+}
+
+enum Season {
+  spring
+  summer
+  autumn
+  winter
+  all_season
+}
+
+enum FitType {
+  slim
+  regular
+  loose
+  oversized
+  fitted
 }
