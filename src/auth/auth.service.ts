@@ -183,4 +183,45 @@ export class AuthService {
 
     return user;
   }
+
+  async getCurrentUser(userId: string) {
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        include: {
+          roles: true,
+          profile: true,
+        },
+      });
+
+      if (!user) {
+        throw new NotFoundException({
+          status: 404,
+          message: 'Usuario no encontrado',
+        });
+      }
+
+      // Obtener el rol del usuario
+      const userRole = user.roles[0]?.role || 'client';
+
+      return {
+        id: user.id,
+        email: user.email,
+        full_name: user.full_name,
+        role: userRole,
+        createdAt: user.created_at,
+        updatedAt: user.updated_at,
+      };
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      
+      throw new NotFoundException({
+        status: 404,
+        message: 'Error al obtener información del usuario',
+        error: error.message,
+      });
+    }
+  }
 }

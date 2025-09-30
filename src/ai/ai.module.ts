@@ -8,3 +8,4 @@ import { AiController } from './ai.controller';
   exports: [AiService],
 })
 export class AiModule {}
+
