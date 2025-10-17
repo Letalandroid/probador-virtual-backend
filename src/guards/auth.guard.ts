@@ -15,13 +15,19 @@ export class AuthGuard implements CanActivate {
     const req = context.switchToHttp().getRequest<Request>();
     const authHeader = req.headers['authorization'];
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    if (!authHeader || !authHeader.trim().startsWith('Bearer ')) {
       throw new UnauthorizedException(
         'Token no proporcionado o formato inválido.',
       );
     }
 
-    const token = authHeader.replace('Bearer ', '');
+    const token = authHeader.trim().replace(/^Bearer\s+/, '');
+
+    if (!token) {
+      throw new UnauthorizedException(
+        'Token no proporcionado o formato inválido.',
+      );
+    }
 
     try {
       const payload = this.jwtService.verify(token);
