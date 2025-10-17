@@ -2,65 +2,27 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException, ConflictException } from '@nestjs/common';
 import { ProductsService } from './products.service';
 import { PrismaService } from '../prisma.service';
+import { CreateProductDto, UpdateProductDto } from '../models/product.dto';
+import { Prisma } from '@prisma/client';
+
+// Mock de PrismaService
+const mockPrismaService = {
+  product: {
+    create: jest.fn(),
+    findMany: jest.fn(),
+    findUnique: jest.fn(),
+    update: jest.fn(),
+    delete: jest.fn(),
+    count: jest.fn(),
+  },
+  category: {
+    findUnique: jest.fn(),
+  },
+};
 
 describe('ProductsService', () => {
   let service: ProductsService;
   let prismaService: PrismaService;
-
-  const mockProduct = {
-    id: '1',
-    name: 'Test Product',
-    description: 'Test Description',
-    price: 100,
-    category_id: '1',
-    brand: 'Test Brand',
-    color: 'Blue',
-    sizes: ['S', 'M', 'L'],
-    images: ['image1.jpg', 'image2.jpg'],
-    stock_quantity: 10,
-    is_active: true,
-    gender: 'men',
-    fabric_type: 'cotton',
-    fabric_composition: '100% cotton',
-    care_instructions: 'Machine wash cold',
-    season: 'all_season',
-    style: 'casual',
-    fit_type: 'regular',
-    measurements: {
-      chest: 100,
-      waist: 80,
-      length: 70,
-    },
-    ai_metadata: {
-      clothing_type: 'shirt',
-      colors: ['blue', 'navy'],
-    },
-    clothing_type: 'shirt',
-    created_at: new Date(),
-    updated_at: new Date(),
-    created_by: '1',
-  };
-
-  const mockCategory = {
-    id: '1',
-    name: 'Shirts',
-    description: 'T-Shirts and Shirts',
-    is_active: true,
-  };
-
-  const mockPrismaService = {
-    product: {
-      create: jest.fn(),
-      findMany: jest.fn(),
-      findUnique: jest.fn(),
-      update: jest.fn(),
-      delete: jest.fn(),
-      count: jest.fn(),
-    },
-    category: {
-      findUnique: jest.fn(),
-    },
-  };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -75,191 +37,570 @@ describe('ProductsService', () => {
 
     service = module.get<ProductsService>(ProductsService);
     prismaService = module.get<PrismaService>(PrismaService);
-  });
 
-  afterEach(() => {
+    // Limpiar mocks antes de cada test
     jest.clearAllMocks();
   });
 
   describe('createProduct', () => {
+    const createProductDto: CreateProductDto = {
+      name: 'Test Product',
+      description: 'Test Description',
+      price: 100,
+      category_id: 'category-id',
+      brand: 'Test Brand',
+      color: 'Red',
+      sizes: ['S', 'M', 'L'],
+      images: ['image1.jpg', 'image2.jpg'],
+      stock_quantity: 10,
+      is_active: true,
+      gender: 'unisex',
+    };
+
+    const userId = 'user-id';
+
     it('should create a product successfully', async () => {
-      const createProductDto = {
-        name: 'Test Product',
-        description: 'Test Description',
-        price: 100,
-        category_id: '1',
-        brand: 'Test Brand',
-        color: 'Blue',
-        sizes: ['S', 'M', 'L'],
-        images: ['image1.jpg'],
-        stock_quantity: 10,
-        gender: 'men',
-        fabric_type: 'cotton',
-        fabric_composition: '100% cotton',
-        care_instructions: 'Machine wash cold',
-        season: 'all_season',
-        style: 'casual',
-        fit_type: 'regular',
-        measurements: {
-          chest: 100,
-          waist: 80,
-          length: 70,
+      // Arrange
+      const mockCategory = { id: 'category-id', name: 'Test Category' };
+      const mockProduct = {
+        id: 'product-id',
+        ...createProductDto,
+        created_by: userId,
+        category: mockCategory,
+        user: {
+          id: userId,
+          email: 'test@example.com',
+          full_name: 'Test User',
         },
-        ai_metadata: {
-          clothing_type: 'shirt',
-          colors: ['blue', 'navy'],
-        },
-        clothing_type: 'shirt',
       };
 
       mockPrismaService.category.findUnique.mockResolvedValue(mockCategory);
       mockPrismaService.product.create.mockResolvedValue(mockProduct);
 
-      const result = await service.createProduct(createProductDto, '1');
+      // Act
+      const result = await service.createProduct(createProductDto, userId);
 
-      expect(result).toEqual(mockProduct);
+      // Assert
+      expect(result).toEqual({
+        status: 201,
+        message: 'Producto creado exitosamente',
+        product: mockProduct,
+      });
+
       expect(mockPrismaService.category.findUnique).toHaveBeenCalledWith({
-        where: { id: createProductDto.category_id },
+        where: { id: 'category-id' },
       });
       expect(mockPrismaService.product.create).toHaveBeenCalledWith({
         data: {
           ...createProductDto,
-          created_by: '1',
+          created_by: userId,
         },
         include: {
           category: true,
+          user: {
+            select: {
+              id: true,
+              email: true,
+              full_name: true,
+            },
+          },
         },
       });
     });
 
     it('should throw NotFoundException when category does not exist', async () => {
-      const createProductDto = {
-        name: 'Test Product',
-        price: 100,
-        category_id: 'nonexistent',
-        stock_quantity: 10,
-      };
-
+      // Arrange
       mockPrismaService.category.findUnique.mockResolvedValue(null);
 
-      await expect(service.createProduct(createProductDto, '1')).rejects.toThrow(
-        NotFoundException,
-      );
+      // Act & Assert
+      await expect(service.createProduct(createProductDto, userId)).rejects.toThrow(NotFoundException);
+      expect(mockPrismaService.product.create).not.toHaveBeenCalled();
+    });
+
+    it('should handle Prisma validation errors', async () => {
+      // Arrange
+      const mockCategory = { id: 'category-id', name: 'Test Category' };
+      mockPrismaService.category.findUnique.mockResolvedValue(mockCategory);
+      
+      const prismaError = new Prisma.PrismaClientValidationError('Validation error', {
+        clientVersion: '5.0.0',
+      });
+      mockPrismaService.product.create.mockRejectedValue(prismaError);
+
+      // Act & Assert
+      await expect(service.createProduct(createProductDto, userId)).rejects.toThrow(NotFoundException);
     });
   });
 
-  describe('findAll', () => {
-    it('should return paginated products', async () => {
-      const mockProducts = [mockProduct];
-      const mockTotal = 1;
+  describe('getAllProducts', () => {
+    it('should return products with pagination', async () => {
+      // Arrange
+      const mockProducts = [
+        {
+          id: 'product-1',
+          name: 'Product 1',
+          price: 100,
+          category: { id: 'cat-1', name: 'Category 1' },
+          user: { id: 'user-1', email: 'user1@example.com', full_name: 'User 1' },
+        },
+        {
+          id: 'product-2',
+          name: 'Product 2',
+          price: 200,
+          category: { id: 'cat-2', name: 'Category 2' },
+          user: { id: 'user-2', email: 'user2@example.com', full_name: 'User 2' },
+        },
+      ];
 
       mockPrismaService.product.findMany.mockResolvedValue(mockProducts);
-      mockPrismaService.product.count.mockResolvedValue(mockTotal);
+      mockPrismaService.product.count.mockResolvedValue(2);
 
-      const result = await service.findAll(1, 10, 'men', '1', 'test');
+      // Act
+      const result = await service.getAllProducts(1, 10);
 
+      // Assert
       expect(result).toEqual({
-        data: mockProducts,
-        total: mockTotal,
-        page: 1,
-        limit: 10,
-        totalPages: 1,
+        products: mockProducts,
+        pagination: {
+          page: 1,
+          limit: 10,
+          total: 2,
+          pages: 1,
+        },
+      });
+
+      expect(mockPrismaService.product.findMany).toHaveBeenCalledWith({
+        where: { is_active: true },
+        skip: 0,
+        take: 10,
+        include: {
+          category: true,
+          user: {
+            select: {
+              id: true,
+              email: true,
+              full_name: true,
+            },
+          },
+        },
+        orderBy: { created_at: 'desc' },
       });
     });
 
-    it('should filter products by gender', async () => {
+    it('should filter by category when provided', async () => {
+      // Arrange
       mockPrismaService.product.findMany.mockResolvedValue([]);
       mockPrismaService.product.count.mockResolvedValue(0);
 
-      await service.findAll(1, 10, 'women');
+      // Act
+      await service.getAllProducts(1, 10, 'category-id');
 
-      expect(mockPrismaService.product.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            gender: 'women',
-          }),
-        }),
-      );
+      // Assert
+      expect(mockPrismaService.product.findMany).toHaveBeenCalledWith({
+        where: { 
+          is_active: true,
+          category_id: 'category-id',
+        },
+        skip: 0,
+        take: 10,
+        include: {
+          category: true,
+          user: {
+            select: {
+              id: true,
+              email: true,
+              full_name: true,
+            },
+          },
+        },
+        orderBy: { created_at: 'desc' },
+      });
+    });
+
+    it('should search products when search term provided', async () => {
+      // Arrange
+      mockPrismaService.product.findMany.mockResolvedValue([]);
+      mockPrismaService.product.count.mockResolvedValue(0);
+
+      // Act
+      await service.getAllProducts(1, 10, undefined, 'test search');
+
+      // Assert
+      expect(mockPrismaService.product.findMany).toHaveBeenCalledWith({
+        where: { 
+          is_active: true,
+          OR: [
+            { name: { contains: 'test search', mode: 'insensitive' } },
+            { description: { contains: 'test search', mode: 'insensitive' } },
+            { brand: { contains: 'test search', mode: 'insensitive' } },
+          ],
+        },
+        skip: 0,
+        take: 10,
+        include: {
+          category: true,
+          user: {
+            select: {
+              id: true,
+              email: true,
+              full_name: true,
+            },
+          },
+        },
+        orderBy: { created_at: 'desc' },
+      });
     });
   });
 
-  describe('findOne', () => {
-    it('should return a product by id', async () => {
+  describe('getProductById', () => {
+    it('should return product when found', async () => {
+      // Arrange
+      const mockProduct = {
+        id: 'product-id',
+        name: 'Test Product',
+        price: 100,
+        category: { id: 'cat-1', name: 'Category 1' },
+        user: { id: 'user-1', email: 'user1@example.com', full_name: 'User 1' },
+      };
+
       mockPrismaService.product.findUnique.mockResolvedValue(mockProduct);
 
-      const result = await service.findOne('1');
+      // Act
+      const result = await service.getProductById('product-id');
 
+      // Assert
       expect(result).toEqual(mockProduct);
       expect(mockPrismaService.product.findUnique).toHaveBeenCalledWith({
-        where: { id: '1' },
+        where: { id: 'product-id' },
         include: {
           category: true,
+          user: {
+            select: {
+              id: true,
+              email: true,
+              full_name: true,
+            },
+          },
         },
       });
     });
 
     it('should throw NotFoundException when product not found', async () => {
+      // Arrange
       mockPrismaService.product.findUnique.mockResolvedValue(null);
 
-      await expect(service.findOne('nonexistent')).rejects.toThrow(
-        NotFoundException,
-      );
+      // Act & Assert
+      await expect(service.getProductById('non-existent-id')).rejects.toThrow(NotFoundException);
     });
   });
 
-  describe('update', () => {
-    it('should update a product successfully', async () => {
-      const updateProductDto = {
-        name: 'Updated Product',
-        price: 150,
+  describe('updateProduct', () => {
+    const updateProductDto: UpdateProductDto = {
+      name: 'Updated Product',
+      price: 150,
+    };
+
+    const userId = 'user-id';
+    const productId = 'product-id';
+
+    it('should update product successfully', async () => {
+      // Arrange
+      const existingProduct = {
+        id: productId,
+        created_by: userId,
+        name: 'Original Product',
       };
 
-      const updatedProduct = { ...mockProduct, ...updateProductDto };
+      const updatedProduct = {
+        id: productId,
+        ...updateProductDto,
+        category: { id: 'cat-1', name: 'Category 1' },
+        user: { id: userId, email: 'user@example.com', full_name: 'User' },
+      };
 
-      mockPrismaService.product.findUnique.mockResolvedValue(mockProduct);
+      mockPrismaService.product.findUnique.mockResolvedValue(existingProduct);
       mockPrismaService.product.update.mockResolvedValue(updatedProduct);
 
-      const result = await service.update('1', updateProductDto);
+      // Act
+      const result = await service.updateProduct(productId, updateProductDto, userId);
 
-      expect(result).toEqual(updatedProduct);
+      // Assert
+      expect(result).toEqual({
+        status: 200,
+        message: 'Producto actualizado exitosamente',
+        product: updatedProduct,
+      });
+
       expect(mockPrismaService.product.update).toHaveBeenCalledWith({
-        where: { id: '1' },
+        where: { id: productId },
         data: updateProductDto,
         include: {
           category: true,
+          user: {
+            select: {
+              id: true,
+              email: true,
+              full_name: true,
+            },
+          },
         },
       });
     });
 
     it('should throw NotFoundException when product not found', async () => {
+      // Arrange
       mockPrismaService.product.findUnique.mockResolvedValue(null);
 
-      await expect(service.update('nonexistent', {})).rejects.toThrow(
-        NotFoundException,
-      );
+      // Act & Assert
+      await expect(service.updateProduct(productId, updateProductDto, userId)).rejects.toThrow(NotFoundException);
+    });
+
+    it('should validate category when category_id is provided', async () => {
+      // Arrange
+      const updateWithCategory = { ...updateProductDto, category_id: 'new-category-id' };
+      const existingProduct = { id: productId, created_by: userId };
+      const mockCategory = { id: 'new-category-id', name: 'New Category' };
+      const updatedProduct = { id: productId, ...updateWithCategory };
+
+      mockPrismaService.product.findUnique.mockResolvedValue(existingProduct);
+      mockPrismaService.category.findUnique.mockResolvedValue(mockCategory);
+      mockPrismaService.product.update.mockResolvedValue(updatedProduct);
+
+      // Act
+      await service.updateProduct(productId, updateWithCategory, userId);
+
+      // Assert
+      expect(mockPrismaService.category.findUnique).toHaveBeenCalledWith({
+        where: { id: 'new-category-id' },
+      });
+    });
+
+    it('should throw NotFoundException when new category does not exist', async () => {
+      // Arrange
+      const updateWithCategory = { ...updateProductDto, category_id: 'non-existent-category' };
+      const existingProduct = { id: productId, created_by: userId };
+
+      mockPrismaService.product.findUnique.mockResolvedValue(existingProduct);
+      mockPrismaService.category.findUnique.mockResolvedValue(null);
+
+      // Act & Assert
+      await expect(service.updateProduct(productId, updateWithCategory, userId)).rejects.toThrow(NotFoundException);
     });
   });
 
-  describe('remove', () => {
-    it('should delete a product successfully', async () => {
-      mockPrismaService.product.findUnique.mockResolvedValue(mockProduct);
-      mockPrismaService.product.delete.mockResolvedValue(mockProduct);
+  describe('deleteProduct', () => {
+    const userId = 'user-id';
+    const productId = 'product-id';
 
-      const result = await service.remove('1');
+    it('should delete product successfully', async () => {
+      // Arrange
+      const existingProduct = {
+        id: productId,
+        created_by: userId,
+      };
 
-      expect(result).toEqual(mockProduct);
+      mockPrismaService.product.findUnique.mockResolvedValue(existingProduct);
+      mockPrismaService.product.delete.mockResolvedValue({});
+
+      // Act
+      const result = await service.deleteProduct(productId, userId);
+
+      // Assert
+      expect(result).toEqual({
+        status: 200,
+        message: 'Producto eliminado exitosamente',
+      });
+
       expect(mockPrismaService.product.delete).toHaveBeenCalledWith({
-        where: { id: '1' },
+        where: { id: productId },
       });
     });
 
     it('should throw NotFoundException when product not found', async () => {
+      // Arrange
       mockPrismaService.product.findUnique.mockResolvedValue(null);
 
-      await expect(service.remove('nonexistent')).rejects.toThrow(
-        NotFoundException,
-      );
+      // Act & Assert
+      await expect(service.deleteProduct(productId, userId)).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('getProductsByCategory', () => {
+    it('should call getAllProducts with category filter', async () => {
+      // Arrange
+      const categoryId = 'category-id';
+      mockPrismaService.product.findMany.mockResolvedValue([]);
+      mockPrismaService.product.count.mockResolvedValue(0);
+
+      // Act
+      await service.getProductsByCategory(categoryId, 1, 10);
+
+      // Assert
+      expect(mockPrismaService.product.findMany).toHaveBeenCalledWith({
+        where: { 
+          is_active: true,
+          category_id: categoryId,
+        },
+        skip: 0,
+        take: 10,
+        include: {
+          category: true,
+          user: {
+            select: {
+              id: true,
+              email: true,
+              full_name: true,
+            },
+          },
+        },
+        orderBy: { created_at: 'desc' },
+      });
+    });
+  });
+
+  describe('searchProducts', () => {
+    it('should call getAllProducts with search filter', async () => {
+      // Arrange
+      const searchTerm = 'test search';
+      mockPrismaService.product.findMany.mockResolvedValue([]);
+      mockPrismaService.product.count.mockResolvedValue(0);
+
+      // Act
+      await service.searchProducts(searchTerm, 1, 10);
+
+      // Assert
+      expect(mockPrismaService.product.findMany).toHaveBeenCalledWith({
+        where: { 
+          is_active: true,
+          OR: [
+            { name: { contains: searchTerm, mode: 'insensitive' } },
+            { description: { contains: searchTerm, mode: 'insensitive' } },
+            { brand: { contains: searchTerm, mode: 'insensitive' } },
+          ],
+        },
+        skip: 0,
+        take: 10,
+        include: {
+          category: true,
+          user: {
+            select: {
+              id: true,
+              email: true,
+              full_name: true,
+            },
+          },
+        },
+        orderBy: { created_at: 'desc' },
+      });
+    });
+  });
+
+  describe('getFeaturedProducts', () => {
+    it('should return featured products', async () => {
+      // Arrange
+      const mockProducts = [
+        {
+          id: 'product-1',
+          name: 'Featured Product 1',
+          category: { id: 'cat-1', name: 'Category 1' },
+          user: { id: 'user-1', email: 'user1@example.com', full_name: 'User 1' },
+        },
+      ];
+
+      mockPrismaService.product.findMany.mockResolvedValue(mockProducts);
+
+      // Act
+      const result = await service.getFeaturedProducts(5);
+
+      // Assert
+      expect(result).toEqual(mockProducts);
+      expect(mockPrismaService.product.findMany).toHaveBeenCalledWith({
+        where: { is_active: true },
+        take: 5,
+        include: {
+          category: true,
+          user: {
+            select: {
+              id: true,
+              email: true,
+              full_name: true,
+            },
+          },
+        },
+        orderBy: { created_at: 'desc' },
+      });
+    });
+  });
+
+  describe('updateProductStock', () => {
+    const productId = 'product-id';
+
+    it('should update stock successfully', async () => {
+      // Arrange
+      const existingProduct = {
+        id: productId,
+        stock_quantity: 10,
+      };
+
+      const updatedProduct = {
+        id: productId,
+        stock_quantity: 15,
+        category: { id: 'cat-1', name: 'Category 1' },
+      };
+
+      mockPrismaService.product.findUnique.mockResolvedValue(existingProduct);
+      mockPrismaService.product.update.mockResolvedValue(updatedProduct);
+
+      // Act
+      const result = await service.updateProductStock(productId, 5);
+
+      // Assert
+      expect(result).toEqual({
+        status: 200,
+        message: 'Stock actualizado exitosamente',
+        product: updatedProduct,
+      });
+
+      expect(mockPrismaService.product.update).toHaveBeenCalledWith({
+        where: { id: productId },
+        data: {
+          stock_quantity: 15,
+        },
+        include: {
+          category: true,
+        },
+      });
+    });
+
+    it('should not allow negative stock', async () => {
+      // Arrange
+      const existingProduct = {
+        id: productId,
+        stock_quantity: 5,
+      };
+
+      const updatedProduct = {
+        id: productId,
+        stock_quantity: 0,
+        category: { id: 'cat-1', name: 'Category 1' },
+      };
+
+      mockPrismaService.product.findUnique.mockResolvedValue(existingProduct);
+      mockPrismaService.product.update.mockResolvedValue(updatedProduct);
+
+      // Act
+      const result = await service.updateProductStock(productId, -10);
+
+      // Assert
+      expect(result.product.stock_quantity).toBe(0);
+    });
+
+    it('should throw NotFoundException when product not found', async () => {
+      // Arrange
+      mockPrismaService.product.findUnique.mockResolvedValue(null);
+
+      // Act & Assert
+      await expect(service.updateProductStock(productId, 5)).rejects.toThrow(NotFoundException);
     });
   });
 });
-
