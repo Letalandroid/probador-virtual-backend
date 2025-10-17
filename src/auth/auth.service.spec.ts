@@ -1,45 +1,49 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { JwtService } from '@nestjs/jwt';
+import { ConflictException, UnauthorizedException, NotFoundException } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { PrismaService } from '../prisma.service';
-import { UsersService } from '../users/users.service';
-import { ProfilesService } from '../profiles/profiles.service';
-import { UserRoleAssignmentService } from '../users/user-role-assignment.service';
-import * as bcrypt from 'bcryptjs';
+import { JWTConfig } from '../utils/jwt';
+import { CreateUserDto, LoginDto } from '../models/user.dto';
+import { Prisma } from '@prisma/client';
 
-// Mock bcrypt
-jest.mock('bcryptjs');
-const mockedBcrypt = bcrypt as jest.Mocked<typeof bcrypt>;
+// Mock de PrismaService
+const mockPrismaService = {
+  user: {
+    findUnique: jest.fn(),
+    create: jest.fn(),
+  },
+  userRoleAssignment: {
+    create: jest.fn(),
+  },
+  profile: {
+    create: jest.fn(),
+  },
+};
+
+// Mock de JwtService
+const mockJwtService = {
+  signAsync: jest.fn(),
+};
+
+// Mock de JWTConfig
+const mockJWTConfig = {
+  getConfig: jest.fn().mockReturnValue({
+    secret: 'test-secret',
+    expiresIn: '1h',
+  }),
+};
+
+// Mock de bcrypt
+jest.mock('../utils/bcrypt', () => ({
+  genHash: jest.fn().mockResolvedValue('hashed-password'),
+  comparePassword: jest.fn().mockResolvedValue(true),
+}));
 
 describe('AuthService', () => {
   let service: AuthService;
   let prismaService: PrismaService;
-  let usersService: UsersService;
-
-  const mockUser = {
-    id: '1',
-    email: 'test@example.com',
-    password: 'hashedPassword',
-    full_name: 'Test User',
-    created_at: new Date(),
-    updated_at: new Date(),
-  };
-
-  const mockPrismaService = {
-    user: {
-      findUnique: jest.fn(),
-      create: jest.fn(),
-    },
-  };
-
-  const mockUsersService = {
-    createUser: jest.fn(),
-    findByEmail: jest.fn(),
-  };
-
-  const mockJwtService = {
-    sign: jest.fn(),
-  };
+  let jwtService: JwtService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -50,136 +54,309 @@ describe('AuthService', () => {
           useValue: mockPrismaService,
         },
         {
-          provide: UsersService,
-          useValue: mockUsersService,
-        },
-        {
           provide: JwtService,
           useValue: mockJwtService,
         },
         {
-          provide: ProfilesService,
-          useValue: {},
-        },
-        {
-          provide: UserRoleAssignmentService,
-          useValue: {},
+          provide: JWTConfig,
+          useValue: mockJWTConfig,
         },
       ],
     }).compile();
 
     service = module.get<AuthService>(AuthService);
     prismaService = module.get<PrismaService>(PrismaService);
-    usersService = module.get<UsersService>(UsersService);
-  });
+    jwtService = module.get<JwtService>(JwtService);
 
-  afterEach(() => {
+    // Limpiar mocks antes de cada test
     jest.clearAllMocks();
   });
 
-  describe('validateUser', () => {
-    it('should return user data when credentials are valid', async () => {
-      const loginDto = {
+  describe('register', () => {
+    const createUserDto: CreateUserDto = {
+      email: 'test@example.com',
+      password: 'password123',
+      full_name: 'Test User',
+      role: 'client',
+    };
+
+    it('should register a new user successfully', async () => {
+      // Arrange
+      mockPrismaService.user.findUnique.mockResolvedValue(null);
+      mockPrismaService.user.create.mockResolvedValue({
+        id: 'user-id',
         email: 'test@example.com',
-        password: 'password123',
-      };
-
-      mockedBcrypt.compare.mockResolvedValue(true as never);
-      mockUsersService.findByEmail.mockResolvedValue(mockUser);
-
-      const result = await service.validateUser(loginDto);
-
-      expect(result).toEqual({
-        id: mockUser.id,
-        email: mockUser.email,
-        full_name: mockUser.full_name,
+        full_name: 'Test User',
+        password: 'hashed-password',
       });
-      expect(mockUsersService.findByEmail).toHaveBeenCalledWith(loginDto.email);
+      mockPrismaService.userRoleAssignment.create.mockResolvedValue({});
+      mockPrismaService.profile.create.mockResolvedValue({});
+
+      // Act
+      const result = await service.register(createUserDto);
+
+      // Assert
+      expect(result).toEqual({
+        status: 201,
+        message: 'Usuario creado exitosamente',
+        user: {
+          id: 'user-id',
+          email: 'test@example.com',
+          full_name: 'Test User',
+          role: 'client',
+        },
+      });
+
+      expect(mockPrismaService.user.findUnique).toHaveBeenCalledWith({
+        where: { email: 'test@example.com' },
+      });
+      expect(mockPrismaService.user.create).toHaveBeenCalledWith({
+        data: {
+          email: 'test@example.com',
+          password: 'hashed-password',
+          full_name: 'Test User',
+        },
+      });
+      expect(mockPrismaService.userRoleAssignment.create).toHaveBeenCalledWith({
+        data: {
+          user_id: 'user-id',
+          role: 'client',
+        },
+      });
+      expect(mockPrismaService.profile.create).toHaveBeenCalledWith({
+        data: {
+          user_id: 'user-id',
+          full_name: 'Test User',
+        },
+      });
     });
 
-    it('should return null when user is not found', async () => {
-      const loginDto = {
-        email: 'nonexistent@example.com',
-        password: 'password123',
-      };
-
-      mockUsersService.findByEmail.mockResolvedValue(null);
-
-      const result = await service.validateUser(loginDto);
-
-      expect(result).toBeNull();
-    });
-
-    it('should return null when password is invalid', async () => {
-      const loginDto = {
+    it('should throw ConflictException when user already exists', async () => {
+      // Arrange
+      mockPrismaService.user.findUnique.mockResolvedValue({
+        id: 'existing-user-id',
         email: 'test@example.com',
-        password: 'wrongpassword',
-      };
+      });
 
-      mockedBcrypt.compare.mockResolvedValue(false as never);
-      mockUsersService.findByEmail.mockResolvedValue(mockUser);
+      // Act & Assert
+      await expect(service.register(createUserDto)).rejects.toThrow(ConflictException);
+      expect(mockPrismaService.user.create).not.toHaveBeenCalled();
+    });
 
-      const result = await service.validateUser(loginDto);
+    it('should handle Prisma validation errors', async () => {
+      // Arrange
+      mockPrismaService.user.findUnique.mockResolvedValue(null);
+      const prismaError = new Prisma.PrismaClientValidationError('Validation error', {
+        clientVersion: '5.0.0',
+      });
+      mockPrismaService.user.create.mockRejectedValue(prismaError);
 
-      expect(result).toBeNull();
+      // Act & Assert
+      await expect(service.register(createUserDto)).rejects.toThrow(NotFoundException);
+    });
+
+    it('should assign default role when not provided', async () => {
+      // Arrange
+      const createUserDtoWithoutRole = { ...createUserDto };
+      delete createUserDtoWithoutRole.role;
+      
+      mockPrismaService.user.findUnique.mockResolvedValue(null);
+      mockPrismaService.user.create.mockResolvedValue({
+        id: 'user-id',
+        email: 'test@example.com',
+        full_name: 'Test User',
+        password: 'hashed-password',
+      });
+      mockPrismaService.userRoleAssignment.create.mockResolvedValue({});
+      mockPrismaService.profile.create.mockResolvedValue({});
+
+      // Act
+      const result = await service.register(createUserDtoWithoutRole);
+
+      // Assert
+      expect(result.user.role).toBe('client');
+      expect(mockPrismaService.userRoleAssignment.create).toHaveBeenCalledWith({
+        data: {
+          user_id: 'user-id',
+          role: 'client',
+        },
+      });
     });
   });
 
   describe('login', () => {
-    it('should return access token when login is successful', async () => {
-      const user = {
-        id: '1',
+    const loginDto: LoginDto = {
+      email: 'test@example.com',
+      password: 'password123',
+    };
+
+    it('should login successfully with valid credentials', async () => {
+      // Arrange
+      const mockUser = {
+        id: 'user-id',
         email: 'test@example.com',
+        password: 'hashed-password',
         full_name: 'Test User',
+        roles: [{ role: 'client' }],
+        profile: { full_name: 'Test User' },
       };
 
-      mockJwtService.sign.mockReturnValue('mock-jwt-token');
+      mockPrismaService.user.findUnique.mockResolvedValue(mockUser);
+      mockJwtService.signAsync.mockResolvedValue('jwt-token');
 
-      const result = await service.login(user);
+      // Act
+      const result = await service.login(loginDto);
 
+      // Assert
       expect(result).toEqual({
-        access_token: 'mock-jwt-token',
+        status: 200,
+        message: 'Inicio de sesión exitoso',
+        token: 'jwt-token',
         user: {
-          id: user.id,
-          email: user.email,
-          full_name: user.full_name,
+          id: 'user-id',
+          email: 'test@example.com',
+          full_name: 'Test User',
+          role: 'client',
         },
       });
-      expect(mockJwtService.sign).toHaveBeenCalledWith({
-        sub: user.id,
-        email: user.email,
-      });
+
+      expect(mockJwtService.signAsync).toHaveBeenCalledWith(
+        {
+          userId: 'user-id',
+          email: 'test@example.com',
+          full_name: 'Test User',
+          role: 'client',
+        },
+        { secret: 'test-secret', expiresIn: '1h' }
+      );
+    });
+
+    it('should throw UnauthorizedException when user not found', async () => {
+      // Arrange
+      mockPrismaService.user.findUnique.mockResolvedValue(null);
+
+      // Act & Assert
+      await expect(service.login(loginDto)).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('should throw UnauthorizedException when password is invalid', async () => {
+      // Arrange
+      const mockUser = {
+        id: 'user-id',
+        email: 'test@example.com',
+        password: 'hashed-password',
+        full_name: 'Test User',
+        roles: [{ role: 'client' }],
+        profile: { full_name: 'Test User' },
+      };
+
+      mockPrismaService.user.findUnique.mockResolvedValue(mockUser);
+      
+      // Mock comparePassword to return false
+      const { comparePassword } = require('../utils/bcrypt');
+      comparePassword.mockResolvedValueOnce(false);
+
+      // Act & Assert
+      await expect(service.login(loginDto)).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('should throw UnauthorizedException when user has no password', async () => {
+      // Arrange
+      const mockUser = {
+        id: 'user-id',
+        email: 'test@example.com',
+        password: null,
+        full_name: 'Test User',
+        roles: [{ role: 'client' }],
+        profile: { full_name: 'Test User' },
+      };
+
+      mockPrismaService.user.findUnique.mockResolvedValue(mockUser);
+
+      // Act & Assert
+      await expect(service.login(loginDto)).rejects.toThrow(UnauthorizedException);
     });
   });
 
-  describe('register', () => {
-    it('should create user and return access token', async () => {
-      const registerDto = {
-        email: 'newuser@example.com',
-        password: 'password123',
-        full_name: 'New User',
+  describe('validateUser', () => {
+    it('should return user when found', async () => {
+      // Arrange
+      const mockUser = {
+        id: 'user-id',
+        email: 'test@example.com',
+        full_name: 'Test User',
+        roles: [{ role: 'client' }],
+        profile: { full_name: 'Test User' },
       };
 
-      const hashedPassword = 'hashedPassword';
-      mockedBcrypt.hash.mockResolvedValue(hashedPassword as never);
-      mockUsersService.createUser.mockResolvedValue(mockUser);
-      mockJwtService.sign.mockReturnValue('mock-jwt-token');
+      mockPrismaService.user.findUnique.mockResolvedValue(mockUser);
 
-      const result = await service.register(registerDto);
+      // Act
+      const result = await service.validateUser('user-id');
 
-      expect(result).toEqual({
-        access_token: 'mock-jwt-token',
-        user: {
-          id: mockUser.id,
-          email: mockUser.email,
-          full_name: mockUser.full_name,
+      // Assert
+      expect(result).toEqual(mockUser);
+      expect(mockPrismaService.user.findUnique).toHaveBeenCalledWith({
+        where: { id: 'user-id' },
+        include: {
+          roles: true,
+          profile: true,
         },
       });
-      expect(mockUsersService.createUser).toHaveBeenCalledWith({
-        ...registerDto,
-        password: hashedPassword,
+    });
+
+    it('should throw UnauthorizedException when user not found', async () => {
+      // Arrange
+      mockPrismaService.user.findUnique.mockResolvedValue(null);
+
+      // Act & Assert
+      await expect(service.validateUser('non-existent-id')).rejects.toThrow(UnauthorizedException);
+    });
+  });
+
+  describe('getCurrentUser', () => {
+    it('should return current user data', async () => {
+      // Arrange
+      const mockUser = {
+        id: 'user-id',
+        email: 'test@example.com',
+        full_name: 'Test User',
+        created_at: new Date(),
+        updated_at: new Date(),
+        roles: [{ role: 'client' }],
+        profile: { full_name: 'Test User' },
+      };
+
+      mockPrismaService.user.findUnique.mockResolvedValue(mockUser);
+
+      // Act
+      const result = await service.getCurrentUser('user-id');
+
+      // Assert
+      expect(result).toEqual({
+        id: 'user-id',
+        email: 'test@example.com',
+        full_name: 'Test User',
+        role: 'client',
+        createdAt: mockUser.created_at,
+        updatedAt: mockUser.updated_at,
       });
+    });
+
+    it('should throw NotFoundException when user not found', async () => {
+      // Arrange
+      mockPrismaService.user.findUnique.mockResolvedValue(null);
+
+      // Act & Assert
+      await expect(service.getCurrentUser('non-existent-id')).rejects.toThrow(NotFoundException);
+    });
+
+    it('should handle errors gracefully', async () => {
+      // Arrange
+      mockPrismaService.user.findUnique.mockRejectedValue(new Error('Database error'));
+
+      // Act & Assert
+      await expect(service.getCurrentUser('user-id')).rejects.toThrow(NotFoundException);
     });
   });
 });
-
