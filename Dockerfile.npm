@@ -1,4 +1,4 @@
-# Backend Dockerfile - Using npm instead of pnpm
+# Backend Dockerfile - Using pnpm with no-frozen-lockfile
 FROM node:18-alpine AS base
 
 # Install dependencies only when needed
@@ -7,9 +7,9 @@ FROM base AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
-# Install dependencies using npm
-COPY package.json package-lock.json* ./
-RUN npm ci --only=production
+# Install dependencies using pnpm
+COPY package.json pnpm-lock.yaml* ./
+RUN corepack enable pnpm && pnpm i --no-frozen-lockfile
 
 # Rebuild the source code only when needed
 FROM base AS builder
@@ -46,4 +46,4 @@ ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
 # Start the application
-CMD ["npm", "run", "start:prod"]
+CMD ["node", "dist/main.js"]

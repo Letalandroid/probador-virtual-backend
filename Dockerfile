@@ -46,4 +46,4 @@ ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
 # Start the application
-CMD ["npm", "run", "start:prod"]
+CMD ["node", "dist/src/main.js"]
