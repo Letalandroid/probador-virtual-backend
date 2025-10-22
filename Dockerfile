@@ -17,11 +17,18 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
+# Enable pnpm in builder stage
+RUN corepack enable pnpm
+
 # Generate Prisma client
 RUN npx prisma generate
 
 # Build the application
-RUN npm run build
+RUN pnpm run build
+
+# Run migration and seed (skip if no database)
+RUN npx prisma migrate dev --name init || echo "Migration skipped - no database available"
+RUN pnpm run prisma:seed || echo "Seed skipped - no database available"
 
 # Production image, copy all the files and run nest
 FROM base AS runner
