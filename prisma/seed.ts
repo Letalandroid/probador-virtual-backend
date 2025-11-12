@@ -232,7 +232,7 @@ async function main() {
       color: 'Negro',
       sizes: ['S', 'M', 'L', 'XL'],
       images: [
-        'https://schbbdodgajmbzeeriwd.supabase.co/storage/v1/object/public/prendas/Chaqueta-de-cuero-genuino-para-hombre-abrigo-delgado-de-piel-de-vaca-Natural-Estilo-Vintage-marr.webp',
+        'https://schbbdodgajmbzeeriwd.supabase.co/storage/v1/object/public/prendas/chaqueta-de-cuero-genuino-hecha-con-un-acabado-de-alta-calidad.jpg',
       ],
       stock_quantity: 15,
       is_active: true,
