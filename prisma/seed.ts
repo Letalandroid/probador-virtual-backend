@@ -136,7 +136,7 @@ async function main() {
       color: 'Negro',
       sizes: ['Único'],
       images: [
-        'https://images.pexels.com/photos/975668/pexels-photo-975668.jpeg?auto=compress&cs=tinysrgb&w=400&h=500&fit=crop',
+        'https://schbbdodgajmbzeeriwd.supabase.co/storage/v1/object/public/prendas/38-2_copy.webp',
       ],
       stock_quantity: 50,
       is_active: true,
@@ -152,7 +152,7 @@ async function main() {
       color: 'Negro',
       sizes: ['Único'],
       images: [
-        'https://images.pexels.com/photos/1697214/pexels-photo-1697214.jpeg?auto=compress&cs=tinysrgb&w=400&h=500&fit=crop',
+        'https://schbbdodgajmbzeeriwd.supabase.co/storage/v1/object/public/prendas/e8ae74a1bc29c14aa30eed7d75251b8d.png',
       ],
       stock_quantity: 25,
       is_active: true,
@@ -168,7 +168,7 @@ async function main() {
       color: 'Rose',
       sizes: ['XS', 'S', 'M', 'L'],
       images: [
-        'https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=400&h=500&fit=crop',
+        'https://schbbdodgajmbzeeriwd.supabase.co/storage/v1/object/public/prendas/rBVaR1r-S2GAPu-pAAMqo1M9mRc863.jpg',
       ],
       stock_quantity: 50,
       is_active: true,
@@ -184,7 +184,7 @@ async function main() {
       color: 'Floral',
       sizes: ['XS', 'S', 'M', 'L'],
       images: [
-        'https://images.pexels.com/photos/1069771/pexels-photo-1069771.jpeg?auto=compress&cs=tinysrgb&w=400&h=500&fit=crop',
+        'https://schbbdodgajmbzeeriwd.supabase.co/storage/v1/object/public/prendas/16fb48639c8e77616b82fe8320ac2001.jpg',
       ],
       stock_quantity: 40,
       is_active: true,
@@ -200,7 +200,7 @@ async function main() {
       color: 'Perla',
       sizes: ['Único'],
       images: [
-        'https://images.pexels.com/photos/1191531/pexels-photo-1191531.jpeg?auto=compress&cs=tinysrgb&w=400&h=500&fit=crop',
+        'https://schbbdodgajmbzeeriwd.supabase.co/storage/v1/object/public/prendas/collares-de-perlas-multiples.webp',
       ],
       stock_quantity: 15,
       is_active: true,
@@ -216,7 +216,7 @@ async function main() {
       color: 'Azul',
       sizes: ['26', '28', '30', '32', '34'],
       images: [
-        'https://images.pexels.com/photos/1598508/pexels-photo-1598508.jpeg?auto=compress&cs=tinysrgb&w=400&h=500&fit=crop',
+        'https://schbbdodgajmbzeeriwd.supabase.co/storage/v1/object/public/prendas/16bc0d6c2e1118410f3927b3388f68a0.jpg',
       ],
       stock_quantity: 60,
       is_active: true,
@@ -232,7 +232,7 @@ async function main() {
       color: 'Negro',
       sizes: ['S', 'M', 'L', 'XL'],
       images: [
-        'https://images.pexels.com/photos/1124468/pexels-photo-1124468.jpeg?auto=compress&cs=tinysrgb&w=400&h=500&fit=crop',
+        'https://schbbdodgajmbzeeriwd.supabase.co/storage/v1/object/public/prendas/Chaqueta-de-cuero-genuino-para-hombre-abrigo-delgado-de-piel-de-vaca-Natural-Estilo-Vintage-marr.webp',
       ],
       stock_quantity: 15,
       is_active: true,
@@ -248,7 +248,7 @@ async function main() {
       color: 'Negro',
       sizes: ['S', 'M', 'L', 'XL', 'XXL'],
       images: [
-        'https://images.pexels.com/photos/1043473/pexels-photo-1043473.jpeg?auto=compress&cs=tinysrgb&w=400&h=500&fit=crop',
+        'https://schbbdodgajmbzeeriwd.supabase.co/storage/v1/object/public/prendas/2b46edfa-053e-46a5-b9da-3d221993e9c9.499614b445862d2c95a7776004453bd4.webp',
       ],
       stock_quantity: 80,
       is_active: true,
@@ -264,7 +264,7 @@ async function main() {
       color: 'Multicolor',
       sizes: ['2T', '3T', '4T', '5T', '6T'],
       images: [
-        'https://images.pexels.com/photos/1620760/pexels-photo-1620760.jpeg?auto=compress&cs=tinysrgb&w=400&h=500&fit=crop',
+        'https://schbbdodgajmbzeeriwd.supabase.co/storage/v1/object/public/prendas/camiseta-manga-corta-infantil-guacamayo.jpg',
       ],
       stock_quantity: 40,
       is_active: true,
@@ -280,7 +280,7 @@ async function main() {
       color: 'Azul',
       sizes: ['S', 'M', 'L', 'XL', 'XXL'],
       images: [
-        'https://images.pexels.com/photos/1656684/pexels-photo-1656684.jpeg?auto=compress&cs=tinysrgb&w=400&h=500&fit=crop',
+        'https://schbbdodgajmbzeeriwd.supabase.co/storage/v1/object/public/prendas/camiseta.jpg',
       ],
       stock_quantity: 45,
       is_active: true,
@@ -296,7 +296,7 @@ async function main() {
       color: 'Rosa',
       sizes: ['2T', '3T', '4T', '5T', '6T'],
       images: [
-        'https://images.pexels.com/photos/1620771/pexels-photo-1620771.jpeg?auto=compress&cs=tinysrgb&w=400&h=500&fit=crop',
+        'https://schbbdodgajmbzeeriwd.supabase.co/storage/v1/object/public/prendas/71hUIkANupL._AC_UL1500_.jpg',
       ],
       stock_quantity: 20,
       is_active: true,
@@ -312,7 +312,7 @@ async function main() {
       color: 'Gris',
       sizes: ['S', 'M', 'L', 'XL', 'XXL'],
       images: [
-        'https://images.pexels.com/photos/996329/pexels-photo-996329.jpeg?auto=compress&cs=tinysrgb&w=400&h=500&fit=crop',
+        'https://schbbdodgajmbzeeriwd.supabase.co/storage/v1/object/public/prendas/Dettori-Loose-Pullover-Hoodie.avif',
       ],
       stock_quantity: 35,
       is_active: true,
@@ -328,7 +328,7 @@ async function main() {
       color: 'Negro',
       sizes: ['S', 'M', 'L'],
       images: [
-        'https://images.pexels.com/photos/3560044/pexels-photo-3560044.jpeg?auto=compress&cs=tinysrgb&w=400&h=500&fit=crop',
+        'https://schbbdodgajmbzeeriwd.supabase.co/storage/v1/object/public/prendas/image-468a996705eb4ac485a9dc23fdec7eff.webp',
       ],
       stock_quantity: 30,
       is_active: true,
@@ -344,7 +344,7 @@ async function main() {
       color: 'Blanco',
       sizes: ['XS', 'S', 'M', 'L', 'XL'],
       images: [
-        'https://images.pexels.com/photos/6311392/pexels-photo-6311392.jpeg?auto=compress&cs=tinysrgb&w=400&h=500&fit=crop',
+        'https://schbbdodgajmbzeeriwd.supabase.co/storage/v1/object/public/prendas/da2fc93a4a5fa130ecd02a99bb7c8c01.jpg',
       ],
       stock_quantity: 25,
       is_active: true,
@@ -360,7 +360,7 @@ async function main() {
       color: 'Floral',
       sizes: ['XS', 'S', 'M', 'L', 'XL'],
       images: [
-        'https://images.pexels.com/photos/1598505/pexels-photo-1598505.jpeg?auto=compress&cs=tinysrgb&w=400&h=500&fit=crop',
+        'https://schbbdodgajmbzeeriwd.supabase.co/storage/v1/object/public/prendas/b3b56592eb54d622a2e923237eae1d77.webp',
       ],
       stock_quantity: 30,
       is_active: true,
