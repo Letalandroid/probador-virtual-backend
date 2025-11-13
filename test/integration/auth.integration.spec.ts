@@ -1,8 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication } from '@nestjs/common';
-import { PrismaService } from '../src/prisma.service';
-import { AppModule } from '../src/app.module';
-import * as request from 'supertest';
+import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { PrismaService } from '../../src/prisma.service';
+import { AppModule } from '../../src/app.module';
+import request from 'supertest';
 
 describe('Auth Integration (e2e)', () => {
   let app: INestApplication;
@@ -14,6 +14,13 @@ describe('Auth Integration (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
+    app.useGlobalPipes(
+      new ValidationPipe({
+        whitelist: true,
+        forbidNonWhitelisted: true,
+        transform: true,
+      }),
+    );
     await app.init();
 
     prismaService = moduleFixture.get<PrismaService>(PrismaService);
@@ -24,10 +31,12 @@ describe('Auth Integration (e2e)', () => {
   });
 
   beforeEach(async () => {
-    // Clean up database before each test
-    await prismaService.user.deleteMany();
-    await prismaService.profile.deleteMany();
-    await prismaService.userRoleAssignment.deleteMany();
+    // Clean up database before each test (respect FK order)
+    await prismaService.$transaction([
+      prismaService.userRoleAssignment.deleteMany(),
+      prismaService.profile.deleteMany(),
+      prismaService.user.deleteMany(),
+    ]);
   });
 
   describe('/auth/register (POST)', () => {
@@ -43,10 +52,10 @@ describe('Auth Integration (e2e)', () => {
         .send(userData)
         .expect(201);
 
-      expect(response.body).toHaveProperty('access_token');
       expect(response.body).toHaveProperty('user');
       expect(response.body.user.email).toBe(userData.email);
       expect(response.body.user.full_name).toBe(userData.full_name);
+      expect(response.body).toHaveProperty('message');
     });
 
     it('should return error for duplicate email', async () => {
@@ -105,7 +114,7 @@ describe('Auth Integration (e2e)', () => {
         .send(loginData)
         .expect(200);
 
-      expect(response.body).toHaveProperty('access_token');
+      expect(response.body).toHaveProperty('token');
       expect(response.body).toHaveProperty('user');
       expect(response.body.user.email).toBe(loginData.email);
     });
@@ -155,7 +164,7 @@ describe('Auth Integration (e2e)', () => {
           password: 'password123',
         });
 
-      accessToken = loginResponse.body.access_token;
+      accessToken = loginResponse.body.token;
     });
 
     it('should return user data with valid token', async () => {
@@ -183,7 +192,3 @@ describe('Auth Integration (e2e)', () => {
     });
   });
 });
-
-
-
-

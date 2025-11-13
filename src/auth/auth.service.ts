@@ -7,7 +7,6 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma.service';
 import { comparePassword, genHash } from '../utils/bcrypt';
-import { JWTConfig } from '../utils/jwt';
 import { CreateUserDto, LoginDto } from '../models/user.dto';
 import { Prisma } from '@prisma/client';
 
@@ -16,7 +15,6 @@ export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
-    private readonly jwtConfig: JWTConfig,
   ) {}
 
   async register(data: CreateUserDto) {
@@ -139,10 +137,7 @@ export class AuthService {
         role: userRole,
       };
 
-      const token = await this.jwtService.signAsync(
-        payload,
-        this.jwtConfig.getConfig(),
-      );
+      const token = await this.jwtService.signAsync(payload);
 
       return {
         status: 200,
