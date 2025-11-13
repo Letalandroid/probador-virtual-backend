@@ -45,14 +45,14 @@ export class AiService {
 
   async detectTorso(personImageBase64: string): Promise<TorsoDetectionResponse> {
     try {
-      if (this.shouldMockResponses()) {
-        return this.mockTorsoDetectionResponse();
-      }
-
       const { buffer, mimeType } = this.parseBase64Image(
         personImageBase64,
         'person_image',
       );
+
+      if (this.shouldMockResponses()) {
+        return this.mockTorsoDetectionResponse();
+      }
 
       const formData = new FormData();
       const blob = new Blob([buffer], { type: mimeType });
@@ -81,10 +81,6 @@ export class AiService {
 
   async virtualTryOn(request: VirtualTryOnRequest): Promise<VirtualTryOnResponse> {
     try {
-      if (this.shouldMockResponses()) {
-        return this.mockVirtualTryOnResponse(request);
-      }
-
       const personImage = this.parseBase64Image(
         request.personImage,
         'person_image',
@@ -93,6 +89,10 @@ export class AiService {
         request.clothingImage,
         'clothing_image',
       );
+
+      if (this.shouldMockResponses()) {
+        return this.mockVirtualTryOnResponse(request);
+      }
 
       const formData = new FormData();
 
@@ -137,10 +137,6 @@ export class AiService {
 
   async analyzeClothingFit(personImageBase64: string, clothingImageBase64: string): Promise<ClothingFitAnalysisResponse> {
     try {
-      if (this.shouldMockResponses()) {
-        return this.mockClothingFitResponse();
-      }
-
       const personImage = this.parseBase64Image(
         personImageBase64,
         'person_image',
@@ -149,6 +145,10 @@ export class AiService {
         clothingImageBase64,
         'clothing_image',
       );
+
+      if (this.shouldMockResponses()) {
+        return this.mockClothingFitResponse();
+      }
 
       const formData = new FormData();
 
@@ -189,10 +189,6 @@ export class AiService {
     angles: string[] = ['front', 'side', 'back']
   ) {
     try {
-      if (this.shouldMockResponses()) {
-        return this.mockMultipleAnglesResponse(angles);
-      }
-
       const personImage = this.parseBase64Image(
         personImageBase64,
         'person_image',
@@ -201,6 +197,10 @@ export class AiService {
         clothingImageBase64,
         'clothing_image',
       );
+
+      if (this.shouldMockResponses()) {
+        return this.mockMultipleAnglesResponse(angles);
+      }
 
       const formData = new FormData();
 
@@ -238,11 +238,11 @@ export class AiService {
 
   async enhanceImage(imageBase64: string, enhancementType: string = 'realistic') {
     try {
+      const image = this.parseBase64Image(imageBase64, 'image');
+
       if (this.shouldMockResponses()) {
         return this.mockEnhanceImageResponse(enhancementType);
       }
-
-      const image = this.parseBase64Image(imageBase64, 'image');
 
       const formData = new FormData();
 
@@ -309,14 +309,38 @@ export class AiService {
       payload = trimmed.split(',').pop() ?? '';
     }
 
-    if (!payload || !/^[A-Za-z0-9+/]+={0,2}$/.test(payload)) {
+    const sanitizedPayload = payload.replace(/\s+/g, '');
+    if (
+      !sanitizedPayload ||
+      !/^[A-Za-z0-9+/]+={0,2}$/.test(sanitizedPayload) ||
+      sanitizedPayload.length % 4 !== 0
+    ) {
+      throw new BadRequestException(
+        `El campo ${fieldName} debe ser una cadena base64 válida`,
+      );
+    }
+
+    let buffer: Buffer;
+    try {
+      buffer = Buffer.from(sanitizedPayload, 'base64');
+    } catch (error) {
+      throw new BadRequestException(
+        `El campo ${fieldName} debe ser una cadena base64 válida`,
+      );
+    }
+
+    if (
+      !buffer.length ||
+      buffer.toString('base64').replace(/=+$/g, '') !==
+        sanitizedPayload.replace(/=+$/g, '')
+    ) {
       throw new BadRequestException(
         `El campo ${fieldName} debe ser una cadena base64 válida`,
       );
     }
 
     return {
-      buffer: Buffer.from(payload, 'base64'),
+      buffer,
       mimeType,
     };
   }

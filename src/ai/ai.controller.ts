@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { AuthGuard } from '../guards/auth.guard';
 import { AiService } from './ai.service';
 import {
@@ -15,6 +23,7 @@ export class AiController {
   constructor(private readonly aiService: AiService) {}
 
   @Post('detect-torso')
+  @HttpCode(HttpStatus.OK)
   async detectTorso(@Body() torsoDetectionDto: TorsoDetectionDto) {
     const result = await this.aiService.detectTorso(torsoDetectionDto.personImage);
     return {
@@ -25,6 +34,7 @@ export class AiController {
   }
 
   @Post('virtual-try-on')
+  @HttpCode(HttpStatus.OK)
   async virtualTryOn(@Body() virtualTryOnDto: VirtualTryOnDto) {
     const result = await this.aiService.virtualTryOn(virtualTryOnDto);
     return {
@@ -35,6 +45,7 @@ export class AiController {
   }
 
   @Post('analyze-clothing-fit')
+  @HttpCode(HttpStatus.OK)
   async analyzeClothingFit(@Body() clothingFitDto: ClothingFitAnalysisDto) {
     const result = await this.aiService.analyzeClothingFit(
       clothingFitDto.personImage,
@@ -48,6 +59,7 @@ export class AiController {
   }
 
   @Post('multiple-angles')
+  @HttpCode(HttpStatus.OK)
   async generateMultipleAngles(@Body() multipleAnglesDto: MultipleAnglesDto) {
     const result = await this.aiService.generateMultipleAngles(
       multipleAnglesDto.personImage,
@@ -62,6 +74,7 @@ export class AiController {
   }
 
   @Post('enhance-image')
+  @HttpCode(HttpStatus.OK)
   async enhanceImage(@Body() imageEnhancementDto: ImageEnhancementDto) {
     const result = await this.aiService.enhanceImage(
       imageEnhancementDto.image,
@@ -80,6 +93,7 @@ export class AiController {
   }
 
   @Post('health-check')
+  @HttpCode(HttpStatus.OK)
   async postHealthStatus() {
     return this.buildHealthResponse();
   }

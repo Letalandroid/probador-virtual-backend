@@ -1,4 +1,4 @@
-import { Transform } from 'class-transformer';
+import { Expose, Transform } from 'class-transformer';
 import {
   ArrayNotEmpty,
   IsArray,
@@ -7,18 +7,29 @@ import {
   IsString,
 } from 'class-validator';
 
-const mapBodyField = (fieldName: string) =>
-  Transform(({ value, obj }) => {
-    if (value !== undefined && value !== null) {
+const mapBodyField = (fieldName: string) => {
+  return function (target: any, propertyKey: string | symbol) {
+    Expose({ name: fieldName })(target, propertyKey);
+
+    Transform(({ value, obj }) => {
+      if (value !== undefined && value !== null) {
+        return value;
+      }
+
+      const key = typeof propertyKey === 'string' ? propertyKey : String(propertyKey);
+      if (obj && typeof obj === 'object') {
+        if (obj[key] !== undefined && obj[key] !== null) {
+          return obj[key];
+        }
+        if (obj[fieldName] !== undefined && obj[fieldName] !== null) {
+          return obj[fieldName];
+        }
+      }
+
       return value;
-    }
-
-    if (obj && typeof obj === 'object' && fieldName in obj) {
-      return obj[fieldName];
-    }
-
-    return value;
-  }, { toClassOnly: true });
+    }, { toClassOnly: true })(target, propertyKey);
+  };
+};
 
 const normalizeAngles = Transform(({ value, obj }) => {
   const source = value ?? obj?.angles;

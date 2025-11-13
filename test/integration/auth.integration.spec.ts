@@ -7,6 +7,36 @@ import request from 'supertest';
 describe('Auth Integration (e2e)', () => {
   let app: INestApplication;
   let prismaService: PrismaService;
+  const TEST_USER_EMAIL = 'test@example.com';
+
+  const cleanupUserData = async (email: string) => {
+    if (!prismaService) {
+      return;
+    }
+
+    const users = await prismaService.user.findMany({
+      where: { email },
+      select: { id: true },
+    });
+
+    if (!users.length) {
+      return;
+    }
+
+    const userIds = users.map((user) => user.id);
+
+    await prismaService.$transaction([
+      prismaService.userRoleAssignment.deleteMany({
+        where: { user_id: { in: userIds } },
+      }),
+      prismaService.profile.deleteMany({
+        where: { user_id: { in: userIds } },
+      }),
+      prismaService.user.deleteMany({
+        where: { id: { in: userIds } },
+      }),
+    ]);
+  };
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -27,22 +57,19 @@ describe('Auth Integration (e2e)', () => {
   });
 
   afterAll(async () => {
+    await cleanupUserData(TEST_USER_EMAIL);
     await app.close();
   });
 
   beforeEach(async () => {
-    // Clean up database before each test (respect FK order)
-    await prismaService.$transaction([
-      prismaService.userRoleAssignment.deleteMany(),
-      prismaService.profile.deleteMany(),
-      prismaService.user.deleteMany(),
-    ]);
+    // Clean up only the data created by this test suite to avoid interfering with other suites
+    await cleanupUserData(TEST_USER_EMAIL);
   });
 
   describe('/auth/register (POST)', () => {
     it('should register a new user successfully', async () => {
       const userData = {
-        email: 'test@example.com',
+        email: TEST_USER_EMAIL,
         password: 'password123',
         full_name: 'Test User',
       };
@@ -60,7 +87,7 @@ describe('Auth Integration (e2e)', () => {
 
     it('should return error for duplicate email', async () => {
       const userData = {
-        email: 'test@example.com',
+        email: TEST_USER_EMAIL,
         password: 'password123',
         full_name: 'Test User',
       };
@@ -97,7 +124,7 @@ describe('Auth Integration (e2e)', () => {
       await request(app.getHttpServer())
         .post('/auth/register')
         .send({
-          email: 'test@example.com',
+          email: TEST_USER_EMAIL,
           password: 'password123',
           full_name: 'Test User',
         });
@@ -105,7 +132,7 @@ describe('Auth Integration (e2e)', () => {
 
     it('should login with valid credentials', async () => {
       const loginData = {
-        email: 'test@example.com',
+        email: TEST_USER_EMAIL,
         password: 'password123',
       };
 
@@ -121,7 +148,7 @@ describe('Auth Integration (e2e)', () => {
 
     it('should return error for invalid credentials', async () => {
       const loginData = {
-        email: 'test@example.com',
+        email: TEST_USER_EMAIL,
         password: 'wrongpassword',
       };
 
@@ -152,7 +179,7 @@ describe('Auth Integration (e2e)', () => {
       await request(app.getHttpServer())
         .post('/auth/register')
         .send({
-          email: 'test@example.com',
+          email: TEST_USER_EMAIL,
           password: 'password123',
           full_name: 'Test User',
         });
@@ -160,7 +187,7 @@ describe('Auth Integration (e2e)', () => {
       const loginResponse = await request(app.getHttpServer())
         .post('/auth/login')
         .send({
-          email: 'test@example.com',
+          email: TEST_USER_EMAIL,
           password: 'password123',
         });
 
@@ -174,7 +201,7 @@ describe('Auth Integration (e2e)', () => {
         .expect(200);
 
       expect(response.body).toHaveProperty('id');
-      expect(response.body).toHaveProperty('email', 'test@example.com');
+      expect(response.body).toHaveProperty('email', TEST_USER_EMAIL);
       expect(response.body).toHaveProperty('full_name', 'Test User');
     });
 
