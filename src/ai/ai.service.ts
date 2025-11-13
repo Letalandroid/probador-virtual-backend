@@ -55,7 +55,10 @@ export class AiService {
       }
 
       const formData = new FormData();
-      const blob = new Blob([buffer], { type: mimeType });
+      const blob = new Blob(
+        [this.bufferToArrayBuffer(buffer)],
+        { type: mimeType },
+      );
       formData.append('person_image', blob, 'person.jpg');
 
       const response = await axios.post(
@@ -96,12 +99,18 @@ export class AiService {
 
       const formData = new FormData();
 
-      const personBlob = new Blob([personImage.buffer], {
-        type: personImage.mimeType,
-      });
-      const clothingBlob = new Blob([clothingImage.buffer], {
-        type: clothingImage.mimeType,
-      });
+      const personBlob = new Blob(
+        [this.bufferToArrayBuffer(personImage.buffer)],
+        {
+          type: personImage.mimeType,
+        },
+      );
+      const clothingBlob = new Blob(
+        [this.bufferToArrayBuffer(clothingImage.buffer)],
+        {
+          type: clothingImage.mimeType,
+        },
+      );
 
       formData.append('person_image', personBlob, 'person.jpg');
       formData.append('clothing_image', clothingBlob, 'clothing.jpg');
@@ -152,12 +161,18 @@ export class AiService {
 
       const formData = new FormData();
 
-      const personBlob = new Blob([personImage.buffer], {
-        type: personImage.mimeType,
-      });
-      const clothingBlob = new Blob([clothingImage.buffer], {
-        type: clothingImage.mimeType,
-      });
+      const personBlob = new Blob(
+        [this.bufferToArrayBuffer(personImage.buffer)],
+        {
+          type: personImage.mimeType,
+        },
+      );
+      const clothingBlob = new Blob(
+        [this.bufferToArrayBuffer(clothingImage.buffer)],
+        {
+          type: clothingImage.mimeType,
+        },
+      );
 
       formData.append('person_image', personBlob, 'person.jpg');
       formData.append('clothing_image', clothingBlob, 'clothing.jpg');
@@ -204,12 +219,18 @@ export class AiService {
 
       const formData = new FormData();
 
-      const personBlob = new Blob([personImage.buffer], {
-        type: personImage.mimeType,
-      });
-      const clothingBlob = new Blob([clothingImage.buffer], {
-        type: clothingImage.mimeType,
-      });
+      const personBlob = new Blob(
+        [this.bufferToArrayBuffer(personImage.buffer)],
+        {
+          type: personImage.mimeType,
+        },
+      );
+      const clothingBlob = new Blob(
+        [this.bufferToArrayBuffer(clothingImage.buffer)],
+        {
+          type: clothingImage.mimeType,
+        },
+      );
 
       formData.append('person_image', personBlob, 'person.jpg');
       formData.append('clothing_image', clothingBlob, 'clothing.jpg');
@@ -246,7 +267,10 @@ export class AiService {
 
       const formData = new FormData();
 
-      const imageBlob = new Blob([image.buffer], { type: image.mimeType });
+      const imageBlob = new Blob(
+        [this.bufferToArrayBuffer(image.buffer)],
+        { type: image.mimeType },
+      );
       formData.append('image', imageBlob, 'image.jpg');
       formData.append('enhancement_type', enhancementType ?? 'realistic');
 
@@ -343,6 +367,13 @@ export class AiService {
       buffer,
       mimeType,
     };
+  }
+
+  private bufferToArrayBuffer(buffer: Buffer): ArrayBuffer {
+    const arrayBuffer = new ArrayBuffer(buffer.byteLength);
+    const view = new Uint8Array(arrayBuffer);
+    view.set(buffer);
+    return arrayBuffer;
   }
 
   private shouldMockResponses() {
