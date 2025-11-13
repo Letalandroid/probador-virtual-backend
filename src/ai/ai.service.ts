@@ -1,4 +1,9 @@
-import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
+import {
+  Injectable,
+  HttpException,
+  HttpStatus,
+  BadRequestException,
+} from '@nestjs/common';
 import axios from 'axios';
 
 export interface VirtualTryOnRequest {
@@ -40,12 +45,17 @@ export class AiService {
 
   async detectTorso(personImageBase64: string): Promise<TorsoDetectionResponse> {
     try {
-      // Convertir base64 a buffer
-      const imageBuffer = Buffer.from(personImageBase64, 'base64');
-      
-      // Crear FormData para la petición
+      const { buffer, mimeType } = this.parseBase64Image(
+        personImageBase64,
+        'person_image',
+      );
+
+      if (this.shouldMockResponses()) {
+        return this.mockTorsoDetectionResponse();
+      }
+
       const formData = new FormData();
-      const blob = new Blob([imageBuffer], { type: 'image/jpeg' });
+      const blob = new Blob([buffer], { type: mimeType });
       formData.append('person_image', blob, 'person.jpg');
 
       const response = await axios.post(
@@ -55,42 +65,53 @@ export class AiService {
           headers: {
             'Content-Type': 'multipart/form-data',
           },
-          timeout: 30000, // 30 segundos timeout
-        }
+          timeout: 30000,
+        },
       );
 
       return response.data;
     } catch (error) {
-      console.error('Error en detección de torso:', error);
-      throw new HttpException(
-        {
-          status: HttpStatus.INTERNAL_SERVER_ERROR,
-          message: 'Error en el servicio de IA',
-          error: error.message,
-        },
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+
+      this.handleAiError('detección de torso', error);
     }
   }
 
   async virtualTryOn(request: VirtualTryOnRequest): Promise<VirtualTryOnResponse> {
     try {
-      // Convertir imágenes base64 a buffers
-      const personImageBuffer = Buffer.from(request.personImage, 'base64');
-      const clothingImageBuffer = Buffer.from(request.clothingImage, 'base64');
+      const personImage = this.parseBase64Image(
+        request.personImage,
+        'person_image',
+      );
+      const clothingImage = this.parseBase64Image(
+        request.clothingImage,
+        'clothing_image',
+      );
 
-      // Crear FormData para la petición
+      if (this.shouldMockResponses()) {
+        return this.mockVirtualTryOnResponse(request);
+      }
+
       const formData = new FormData();
-      
-      const personBlob = new Blob([personImageBuffer], { type: 'image/jpeg' });
-      const clothingBlob = new Blob([clothingImageBuffer], { type: 'image/jpeg' });
-      
+
+      const personBlob = new Blob([personImage.buffer], {
+        type: personImage.mimeType,
+      });
+      const clothingBlob = new Blob([clothingImage.buffer], {
+        type: clothingImage.mimeType,
+      });
+
       formData.append('person_image', personBlob, 'person.jpg');
       formData.append('clothing_image', clothingBlob, 'clothing.jpg');
       formData.append('clothing_type', request.clothingType);
-      
+
       if (request.stylePreferences) {
-        formData.append('style_preferences', JSON.stringify(request.stylePreferences));
+        formData.append(
+          'style_preferences',
+          JSON.stringify(request.stylePreferences),
+        );
       }
 
       const response = await axios.post(
@@ -100,36 +121,44 @@ export class AiService {
           headers: {
             'Content-Type': 'multipart/form-data',
           },
-          timeout: 60000, // 60 segundos timeout para try-on
-        }
+          timeout: 60000,
+        },
       );
 
       return response.data;
     } catch (error) {
-      console.error('Error en virtual try-on:', error);
-      throw new HttpException(
-        {
-          status: HttpStatus.INTERNAL_SERVER_ERROR,
-          message: 'Error en el servicio de virtual try-on',
-          error: error.message,
-        },
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+
+      this.handleAiError('try-on virtual', error);
     }
   }
 
   async analyzeClothingFit(personImageBase64: string, clothingImageBase64: string): Promise<ClothingFitAnalysisResponse> {
     try {
-      // Convertir imágenes base64 a buffers
-      const personImageBuffer = Buffer.from(personImageBase64, 'base64');
-      const clothingImageBuffer = Buffer.from(clothingImageBase64, 'base64');
+      const personImage = this.parseBase64Image(
+        personImageBase64,
+        'person_image',
+      );
+      const clothingImage = this.parseBase64Image(
+        clothingImageBase64,
+        'clothing_image',
+      );
 
-      // Crear FormData para la petición
+      if (this.shouldMockResponses()) {
+        return this.mockClothingFitResponse();
+      }
+
       const formData = new FormData();
-      
-      const personBlob = new Blob([personImageBuffer], { type: 'image/jpeg' });
-      const clothingBlob = new Blob([clothingImageBuffer], { type: 'image/jpeg' });
-      
+
+      const personBlob = new Blob([personImage.buffer], {
+        type: personImage.mimeType,
+      });
+      const clothingBlob = new Blob([clothingImage.buffer], {
+        type: clothingImage.mimeType,
+      });
+
       formData.append('person_image', personBlob, 'person.jpg');
       formData.append('clothing_image', clothingBlob, 'clothing.jpg');
 
@@ -141,20 +170,16 @@ export class AiService {
             'Content-Type': 'multipart/form-data',
           },
           timeout: 30000,
-        }
+        },
       );
 
       return response.data;
     } catch (error) {
-      console.error('Error en análisis de ajuste:', error);
-      throw new HttpException(
-        {
-          status: HttpStatus.INTERNAL_SERVER_ERROR,
-          message: 'Error en el análisis de ajuste',
-          error: error.message,
-        },
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+
+      this.handleAiError('análisis de ajuste', error);
     }
   }
 
@@ -164,19 +189,31 @@ export class AiService {
     angles: string[] = ['front', 'side', 'back']
   ) {
     try {
-      // Convertir imágenes base64 a buffers
-      const personImageBuffer = Buffer.from(personImageBase64, 'base64');
-      const clothingImageBuffer = Buffer.from(clothingImageBase64, 'base64');
+      const personImage = this.parseBase64Image(
+        personImageBase64,
+        'person_image',
+      );
+      const clothingImage = this.parseBase64Image(
+        clothingImageBase64,
+        'clothing_image',
+      );
 
-      // Crear FormData para la petición
+      if (this.shouldMockResponses()) {
+        return this.mockMultipleAnglesResponse(angles);
+      }
+
       const formData = new FormData();
-      
-      const personBlob = new Blob([personImageBuffer], { type: 'image/jpeg' });
-      const clothingBlob = new Blob([clothingImageBuffer], { type: 'image/jpeg' });
-      
+
+      const personBlob = new Blob([personImage.buffer], {
+        type: personImage.mimeType,
+      });
+      const clothingBlob = new Blob([clothingImage.buffer], {
+        type: clothingImage.mimeType,
+      });
+
       formData.append('person_image', personBlob, 'person.jpg');
       formData.append('clothing_image', clothingBlob, 'clothing.jpg');
-      formData.append('angles', angles.join(','));
+      formData.append('angles', (angles ?? ['front', 'side', 'back']).join(','));
 
       const response = await axios.post(
         `${this.aiApiUrl}/multiple-angles`,
@@ -185,35 +222,33 @@ export class AiService {
           headers: {
             'Content-Type': 'multipart/form-data',
           },
-          timeout: 90000, // 90 segundos para múltiples ángulos
-        }
+          timeout: 90000,
+        },
       );
 
       return response.data;
     } catch (error) {
-      console.error('Error generando múltiples ángulos:', error);
-      throw new HttpException(
-        {
-          status: HttpStatus.INTERNAL_SERVER_ERROR,
-          message: 'Error generando múltiples ángulos',
-          error: error.message,
-        },
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+
+      this.handleAiError('generación de múltiples ángulos', error);
     }
   }
 
   async enhanceImage(imageBase64: string, enhancementType: string = 'realistic') {
     try {
-      // Convertir imagen base64 a buffer
-      const imageBuffer = Buffer.from(imageBase64, 'base64');
+      const image = this.parseBase64Image(imageBase64, 'image');
 
-      // Crear FormData para la petición
+      if (this.shouldMockResponses()) {
+        return this.mockEnhanceImageResponse(enhancementType);
+      }
+
       const formData = new FormData();
-      
-      const imageBlob = new Blob([imageBuffer], { type: 'image/jpeg' });
+
+      const imageBlob = new Blob([image.buffer], { type: image.mimeType });
       formData.append('image', imageBlob, 'image.jpg');
-      formData.append('enhancement_type', enhancementType);
+      formData.append('enhancement_type', enhancementType ?? 'realistic');
 
       const response = await axios.post(
         `${this.aiApiUrl}/enhance-image`,
@@ -223,24 +258,24 @@ export class AiService {
             'Content-Type': 'multipart/form-data',
           },
           timeout: 30000,
-        }
+        },
       );
 
       return response.data;
     } catch (error) {
-      console.error('Error mejorando imagen:', error);
-      throw new HttpException(
-        {
-          status: HttpStatus.INTERNAL_SERVER_ERROR,
-          message: 'Error mejorando imagen',
-          error: error.message,
-        },
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+
+      this.handleAiError('mejora de imagen', error);
     }
   }
 
   async checkAiServiceHealth(): Promise<boolean> {
+    if (this.shouldMockResponses()) {
+      return true;
+    }
+
     try {
       const response = await axios.get(`${this.aiApiUrl}/health`, {
         timeout: 5000,
@@ -251,5 +286,142 @@ export class AiService {
       return false;
     }
   }
-}
 
+  private parseBase64Image(imageBase64: string, fieldName: string) {
+    if (!imageBase64 || typeof imageBase64 !== 'string') {
+      throw new BadRequestException(
+        `El campo ${fieldName} es obligatorio y debe ser una cadena base64 válida`,
+      );
+    }
+
+    const trimmed = imageBase64.trim();
+    let mimeType = 'image/jpeg';
+    let payload = trimmed;
+
+    const dataUriMatch = trimmed.match(
+      /^data:(?<mime>[^;]+);base64,(?<data>[A-Za-z0-9+/=]+)$/i,
+    );
+
+    if (dataUriMatch?.groups?.data) {
+      mimeType = dataUriMatch.groups.mime || mimeType;
+      payload = dataUriMatch.groups.data;
+    } else if (trimmed.includes(',')) {
+      payload = trimmed.split(',').pop() ?? '';
+    }
+
+    const sanitizedPayload = payload.replace(/\s+/g, '');
+    if (
+      !sanitizedPayload ||
+      !/^[A-Za-z0-9+/]+={0,2}$/.test(sanitizedPayload) ||
+      sanitizedPayload.length % 4 !== 0
+    ) {
+      throw new BadRequestException(
+        `El campo ${fieldName} debe ser una cadena base64 válida`,
+      );
+    }
+
+    let buffer: Buffer;
+    try {
+      buffer = Buffer.from(sanitizedPayload, 'base64');
+    } catch (error) {
+      throw new BadRequestException(
+        `El campo ${fieldName} debe ser una cadena base64 válida`,
+      );
+    }
+
+    if (
+      !buffer.length ||
+      buffer.toString('base64').replace(/=+$/g, '') !==
+        sanitizedPayload.replace(/=+$/g, '')
+    ) {
+      throw new BadRequestException(
+        `El campo ${fieldName} debe ser una cadena base64 válida`,
+      );
+    }
+
+    return {
+      buffer,
+      mimeType,
+    };
+  }
+
+  private shouldMockResponses() {
+    return process.env.NODE_ENV === 'test' || process.env.MOCK_PYTHON_API === 'true';
+  }
+
+  private mockTorsoDetectionResponse(): TorsoDetectionResponse {
+    return {
+      success: true,
+      message: 'Análisis de torso simulado',
+      analysis: {
+        torsoDetected: true,
+        confidence: 0.93,
+      },
+    };
+  }
+
+  private mockVirtualTryOnResponse(
+    request: VirtualTryOnRequest,
+  ): VirtualTryOnResponse {
+    return {
+      success: true,
+      message: 'Try-on virtual simulado',
+      generated_images: [
+        {
+          data: 'base64-mock-try-on-image',
+          mime_type: 'image/png',
+        },
+      ],
+      metadata: {
+        clothingType: request.clothingType,
+        stylePreferences: request.stylePreferences ?? null,
+      },
+    };
+  }
+
+  private mockClothingFitResponse(): ClothingFitAnalysisResponse {
+    return {
+      success: true,
+      message: 'Análisis de ajuste simulado',
+      analysis: {
+        fitScore: 0.88,
+        recommendations: ['Considerar una talla más', 'Ajustar cintura'],
+      },
+    };
+  }
+
+  private mockMultipleAnglesResponse(angles?: string[]) {
+    const safeAngles = angles && angles.length > 0 ? angles : ['front', 'side', 'back'];
+    return {
+      success: true,
+      message: 'Generación de ángulos simulada',
+      generated_images: safeAngles.map((angle) => ({
+        angle,
+        data: `base64-mock-image-${angle}`,
+      })),
+    };
+  }
+
+  private mockEnhanceImageResponse(enhancementType?: string) {
+    return {
+      success: true,
+      message: 'Mejora de imagen simulada',
+      data: {
+        enhancementType: enhancementType ?? 'realistic',
+        image: 'base64-mock-enhanced-image',
+      },
+    };
+  }
+
+  private handleAiError(context: string, error: any): never {
+    console.error(`Error en ${context}:`, error?.message ?? error);
+    throw new HttpException(
+      {
+        status: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: `Error en el servicio de IA durante ${context}`,
+        error: error?.message ?? 'Error desconocido',
+      },
+      HttpStatus.INTERNAL_SERVER_ERROR,
+    );
+  }
+}

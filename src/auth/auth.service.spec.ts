@@ -3,7 +3,6 @@ import { JwtService } from '@nestjs/jwt';
 import { ConflictException, UnauthorizedException, NotFoundException } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { PrismaService } from '../prisma.service';
-import { JWTConfig } from '../utils/jwt';
 import { CreateUserDto, LoginDto } from '../models/user.dto';
 import { Prisma } from '@prisma/client';
 
@@ -24,14 +23,6 @@ const mockPrismaService = {
 // Mock de JwtService
 const mockJwtService = {
   signAsync: jest.fn(),
-};
-
-// Mock de JWTConfig
-const mockJWTConfig = {
-  getConfig: jest.fn().mockReturnValue({
-    secret: 'test-secret',
-    expiresIn: '1h',
-  }),
 };
 
 // Mock de bcrypt
@@ -56,10 +47,6 @@ describe('AuthService', () => {
         {
           provide: JwtService,
           useValue: mockJwtService,
-        },
-        {
-          provide: JWTConfig,
-          useValue: mockJWTConfig,
         },
       ],
     }).compile();
@@ -220,15 +207,12 @@ describe('AuthService', () => {
         },
       });
 
-      expect(mockJwtService.signAsync).toHaveBeenCalledWith(
-        {
-          userId: 'user-id',
-          email: 'test@example.com',
-          full_name: 'Test User',
-          role: 'client',
-        },
-        { secret: 'test-secret', expiresIn: '1h' }
-      );
+      expect(mockJwtService.signAsync).toHaveBeenCalledWith({
+        userId: 'user-id',
+        email: 'test@example.com',
+        full_name: 'Test User',
+        role: 'client',
+      });
     });
 
     it('should throw UnauthorizedException when user not found', async () => {

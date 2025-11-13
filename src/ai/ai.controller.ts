@@ -1,35 +1,21 @@
-import { Controller, Post, Body, UseGuards, HttpException, HttpStatus } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { AuthGuard } from '../guards/auth.guard';
-import { RolesGuard } from '../guards/roles.guard';
-import { Roles } from '../decorators/roles.decorator';
 import { AiService } from './ai.service';
-
-export class VirtualTryOnDto {
-  personImage: string; // base64
-  clothingImage: string; // base64
-  clothingType: string;
-  stylePreferences?: any;
-}
-
-export class TorsoDetectionDto {
-  personImage: string; // base64
-}
-
-export class ClothingFitAnalysisDto {
-  personImage: string; // base64
-  clothingImage: string; // base64
-}
-
-export class MultipleAnglesDto {
-  personImage: string; // base64
-  clothingImage: string; // base64
-  angles?: string[];
-}
-
-export class ImageEnhancementDto {
-  image: string; // base64
-  enhancementType?: string;
-}
+import {
+  ClothingFitAnalysisDto,
+  ImageEnhancementDto,
+  MultipleAnglesDto,
+  TorsoDetectionDto,
+  VirtualTryOnDto,
+} from './dto/ai-requests.dto';
 
 @Controller('ai')
 @UseGuards(AuthGuard)
@@ -37,143 +23,91 @@ export class AiController {
   constructor(private readonly aiService: AiService) {}
 
   @Post('detect-torso')
+  @HttpCode(HttpStatus.OK)
   async detectTorso(@Body() torsoDetectionDto: TorsoDetectionDto) {
-    try {
-      const result = await this.aiService.detectTorso(torsoDetectionDto.personImage);
-      return {
-        success: true,
-        data: result,
-        message: 'Análisis de torso completado exitosamente',
-      };
-    } catch (error) {
-      throw new HttpException(
-        {
-          success: false,
-          message: 'Error en análisis de torso',
-          error: error.message,
-        },
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
+    const result = await this.aiService.detectTorso(torsoDetectionDto.personImage);
+    return {
+      success: true,
+      data: result,
+      message: 'Análisis de torso completado exitosamente',
+    };
   }
 
   @Post('virtual-try-on')
+  @HttpCode(HttpStatus.OK)
   async virtualTryOn(@Body() virtualTryOnDto: VirtualTryOnDto) {
-    try {
-      const result = await this.aiService.virtualTryOn(virtualTryOnDto);
-      return {
-        success: true,
-        data: result,
-        message: 'Try-on virtual completado exitosamente',
-      };
-    } catch (error) {
-      throw new HttpException(
-        {
-          success: false,
-          message: 'Error en try-on virtual',
-          error: error.message,
-        },
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
+    const result = await this.aiService.virtualTryOn(virtualTryOnDto);
+    return {
+      success: true,
+      data: result,
+      message: 'Try-on virtual completado exitosamente',
+    };
   }
 
   @Post('analyze-clothing-fit')
+  @HttpCode(HttpStatus.OK)
   async analyzeClothingFit(@Body() clothingFitDto: ClothingFitAnalysisDto) {
-    try {
-      const result = await this.aiService.analyzeClothingFit(
-        clothingFitDto.personImage,
-        clothingFitDto.clothingImage
-      );
-      return {
-        success: true,
-        data: result,
-        message: 'Análisis de ajuste completado exitosamente',
-      };
-    } catch (error) {
-      throw new HttpException(
-        {
-          success: false,
-          message: 'Error en análisis de ajuste',
-          error: error.message,
-        },
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
+    const result = await this.aiService.analyzeClothingFit(
+      clothingFitDto.personImage,
+      clothingFitDto.clothingImage,
+    );
+    return {
+      success: true,
+      data: result,
+      message: 'Análisis de ajuste completado exitosamente',
+    };
   }
 
   @Post('multiple-angles')
+  @HttpCode(HttpStatus.OK)
   async generateMultipleAngles(@Body() multipleAnglesDto: MultipleAnglesDto) {
-    try {
-      const result = await this.aiService.generateMultipleAngles(
-        multipleAnglesDto.personImage,
-        multipleAnglesDto.clothingImage,
-        multipleAnglesDto.angles
-      );
-      return {
-        success: true,
-        data: result,
-        message: 'Múltiples ángulos generados exitosamente',
-      };
-    } catch (error) {
-      throw new HttpException(
-        {
-          success: false,
-          message: 'Error generando múltiples ángulos',
-          error: error.message,
-        },
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
+    const result = await this.aiService.generateMultipleAngles(
+      multipleAnglesDto.personImage,
+      multipleAnglesDto.clothingImage,
+      multipleAnglesDto.angles,
+    );
+    return {
+      success: true,
+      data: result,
+      message: 'Múltiples ángulos generados exitosamente',
+    };
   }
 
   @Post('enhance-image')
+  @HttpCode(HttpStatus.OK)
   async enhanceImage(@Body() imageEnhancementDto: ImageEnhancementDto) {
-    try {
-      const result = await this.aiService.enhanceImage(
-        imageEnhancementDto.image,
-        imageEnhancementDto.enhancementType
-      );
-      return {
-        success: true,
-        data: result,
-        message: 'Imagen mejorada exitosamente',
-      };
-    } catch (error) {
-      throw new HttpException(
-        {
-          success: false,
-          message: 'Error mejorando imagen',
-          error: error.message,
-        },
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
+    const result = await this.aiService.enhanceImage(
+      imageEnhancementDto.image,
+      imageEnhancementDto.enhancementType,
+    );
+    return {
+      success: true,
+      data: result,
+      message: 'Imagen mejorada exitosamente',
+    };
+  }
+
+  @Get('health')
+  async getHealthStatus() {
+    return this.buildHealthResponse();
   }
 
   @Post('health-check')
-  async checkHealth() {
-    try {
-      const isHealthy = await this.aiService.checkAiServiceHealth();
-      return {
-        success: true,
-        data: {
-          aiServiceAvailable: isHealthy,
-          status: isHealthy ? 'healthy' : 'unavailable',
-        },
-        message: isHealthy ? 'Servicio de IA disponible' : 'Servicio de IA no disponible',
-      };
-    } catch (error) {
-      return {
-        success: false,
-        data: {
-          aiServiceAvailable: false,
-          status: 'error',
-        },
-        message: 'Error verificando servicio de IA',
-        error: error.message,
-      };
-    }
+  @HttpCode(HttpStatus.OK)
+  async postHealthStatus() {
+    return this.buildHealthResponse();
+  }
+
+  private async buildHealthResponse() {
+    const isHealthy = await this.aiService.checkAiServiceHealth();
+    return {
+      status: isHealthy ? 'healthy' : 'unavailable',
+      message: isHealthy
+        ? 'Servicio de IA disponible'
+        : 'Servicio de IA no disponible',
+      details: {
+        aiServiceAvailable: isHealthy,
+      },
+    };
   }
 }
-

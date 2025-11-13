@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { HttpStatus, INestApplication } from '@nestjs/common';
+import { HttpStatus, INestApplication, ValidationPipe } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import * as request from 'supertest';
+import request from 'supertest';
 import { AppModule } from '../../src/app.module';
 import { PrismaService } from '../../src/prisma.service';
 
@@ -23,30 +23,58 @@ describe('Python API Integration (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
+    app.useGlobalPipes(
+      new ValidationPipe({
+        whitelist: true,
+        forbidNonWhitelisted: true,
+        transform: true,
+      }),
+    );
     await app.init();
 
     prismaService = moduleFixture.get<PrismaService>(PrismaService);
 
-    // Create test user and get auth token
+    const uniqueSuffix = Date.now();
+    const testCredentials = {
+      email: `test+${uniqueSuffix}@example.com`,
+      password: 'password123',
+      full_name: 'Test User',
+    };
+
+    // Create test user
     const registerResponse = await request(app.getHttpServer())
       .post('/auth/register')
-      .send({
-        email: 'test@example.com',
-        password: 'password123',
-        full_name: 'Test User',
-      });
+      .send(testCredentials);
 
     expect(registerResponse.status).toBe(HttpStatus.CREATED);
-    authToken = registerResponse.body.token;
     testUserId = registerResponse.body.user.id;
+
+    // Authenticate created user to obtain token
+    const loginResponse = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({
+        email: testCredentials.email,
+        password: testCredentials.password,
+      })
+      .expect(HttpStatus.OK);
+
+    authToken = loginResponse.body.token;
   });
 
   afterAll(async () => {
     // Clean up test data
     if (testUserId) {
-      await prismaService.user.delete({
-        where: { id: testUserId },
-      });
+      await prismaService.$transaction([
+        prismaService.userRoleAssignment.deleteMany({
+          where: { user_id: testUserId },
+        }),
+        prismaService.profile.deleteMany({
+          where: { user_id: testUserId },
+        }),
+        prismaService.user.deleteMany({
+          where: { id: testUserId },
+        }),
+      ]);
     }
     await app.close();
   });
@@ -354,5 +382,23 @@ describe('Python API Integration (e2e)', () => {
       expect(response.status).toBe(HttpStatus.BAD_REQUEST);
     });
   });
-});
 
+  describe('Integración real Backend ↔ IA (Python)', () => {
+    it('should return success when Python AI responds successfully', async () => {
+      // Arrange: Imagen base64 realista, con formato correcto para la IA
+      const mockImageBase64 =
+        'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k=';
+      // Act
+      const response = await request(app.getHttpServer())
+        .post('/ai/detect-torso')
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({
+          person_image: mockImageBase64,
+        });
+      // Assert
+      expect(response.status).toBe(HttpStatus.OK);
+      expect(response.body).toHaveProperty('success', true);
+      expect(response.body).toHaveProperty('data');
+    });
+  });
+});
