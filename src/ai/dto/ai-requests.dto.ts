@@ -78,6 +78,10 @@ export class VirtualTryOnDto {
   @mapBodyField('style_preferences')
   @IsOptional()
   stylePreferences?: any;
+
+  @mapBodyField('product_data')
+  @IsOptional()
+  productData?: any;
 }
 
 export class ClothingFitAnalysisDto {
