@@ -67,6 +67,8 @@ export class ProductsService {
     
     const where: Prisma.ProductWhereInput = {
       is_active: true,
+      // RF02: El catálogo digital no incluirá ropa para niños
+      gender: { not: 'kids' },
       ...(categoryId && { category_id: categoryId }),
       ...(search && {
         OR: [
@@ -249,7 +251,11 @@ export class ProductsService {
 
   async getFeaturedProducts(limit: number = 8) {
     return this.prisma.product.findMany({
-      where: { is_active: true },
+      where: { 
+        is_active: true,
+        // RF02: El catálogo digital no incluirá ropa para niños
+        gender: { not: 'kids' },
+      },
       take: limit,
       include: {
         category: true,
