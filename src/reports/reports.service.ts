@@ -251,19 +251,18 @@ export class ReportsService {
   }
 
   async getProductMovementsReport() {
+    // Optimizar: obtener solo los campos necesarios y usar select en lugar de include
     const products = await this.prisma.product.findMany({
-      include: {
-        category: true,
-        views: {
-          take: 1,
-          orderBy: {
-            created_at: 'desc',
-          },
-        },
-        tryOnSessions: {
-          take: 1,
-          orderBy: {
-            created_at: 'desc',
+      select: {
+        id: true,
+        name: true,
+        brand: true,
+        stock_quantity: true,
+        price: true,
+        updated_at: true,
+        category: {
+          select: {
+            name: true,
           },
         },
       },
@@ -277,6 +276,35 @@ export class ReportsService {
       return this.generateMockProductMovements(20);
     }
 
+    // Obtener las últimas vistas y try-ons en una sola query por producto usando Promise.all
+    const productIds = products.map(p => p.id);
+    
+    // Obtener últimas vistas y try-ons en paralelo usando groupBy
+    const [lastViews, lastTryOns] = await Promise.all([
+      this.prisma.productView.groupBy({
+        by: ['product_id'],
+        where: {
+          product_id: { in: productIds },
+        },
+        _max: {
+          created_at: true,
+        },
+      }),
+      this.prisma.virtualTryOnSession.groupBy({
+        by: ['product_id'],
+        where: {
+          product_id: { in: productIds },
+        },
+        _max: {
+          created_at: true,
+        },
+      }),
+    ]);
+
+    // Crear mapas para acceso rápido
+    const viewsMap = new Map(lastViews.map(v => [v.product_id, v._max.created_at]));
+    const tryOnsMap = new Map(lastTryOns.map(t => [t.product_id, t._max.created_at]));
+
     return products.map((product) => ({
       product_id: product.id,
       product_name: product.name,
@@ -284,8 +312,8 @@ export class ReportsService {
       category: product.category.name,
       stock_quantity: product.stock_quantity,
       price: product.price.toString(),
-      last_view: product.views[0]?.created_at || null,
-      last_try_on: product.tryOnSessions[0]?.created_at || null,
+      last_view: viewsMap.get(product.id) || null,
+      last_try_on: tryOnsMap.get(product.id) || null,
       updated_at: product.updated_at,
     }));
   }
