@@ -11,6 +11,7 @@ export interface VirtualTryOnRequest {
   clothingImage: string; // base64
   clothingType: string;
   stylePreferences?: any;
+  productData?: any;
 }
 
 export interface VirtualTryOnResponse {
@@ -82,19 +83,32 @@ export class AiService {
     }
   }
 
-  async virtualTryOn(request: VirtualTryOnRequest): Promise<VirtualTryOnResponse> {
+  async virtualTryOn(request: VirtualTryOnRequest | any): Promise<VirtualTryOnResponse> {
     try {
+      // Extraer datos del request (puede ser VirtualTryOnRequest o VirtualTryOnDto)
+      const personImageBase64 = request.personImage || request.person_image;
+      const clothingImageBase64 = request.clothingImage || request.clothing_image;
+      const clothingType = request.clothingType || request.clothing_type;
+      const stylePreferences = request.stylePreferences || request.style_preferences;
+      const productData = request.productData || request.product_data;
+
       const personImage = this.parseBase64Image(
-        request.personImage,
+        personImageBase64,
         'person_image',
       );
       const clothingImage = this.parseBase64Image(
-        request.clothingImage,
+        clothingImageBase64,
         'clothing_image',
       );
 
       if (this.shouldMockResponses()) {
-        return this.mockVirtualTryOnResponse(request);
+        return this.mockVirtualTryOnResponse({
+          personImage: personImageBase64,
+          clothingImage: clothingImageBase64,
+          clothingType,
+          stylePreferences,
+          productData,
+        });
       }
 
       const formData = new FormData();
@@ -114,12 +128,19 @@ export class AiService {
 
       formData.append('person_image', personBlob, 'person.jpg');
       formData.append('clothing_image', clothingBlob, 'clothing.jpg');
-      formData.append('clothing_type', request.clothingType);
+      formData.append('clothing_type', clothingType);
 
-      if (request.stylePreferences) {
+      if (stylePreferences) {
         formData.append(
           'style_preferences',
-          JSON.stringify(request.stylePreferences),
+          JSON.stringify(stylePreferences),
+        );
+      }
+
+      if (productData) {
+        formData.append(
+          'product_data',
+          JSON.stringify(productData),
         );
       }
 

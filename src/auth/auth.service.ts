@@ -60,9 +60,20 @@ export class AuthService {
         },
       });
 
+      // Generar token JWT para auto-login después del registro
+      const payload = {
+        userId: userData.id,
+        email: userData.email,
+        full_name: userData.full_name,
+        role: role,
+      };
+
+      const token = await this.jwtService.signAsync(payload);
+
       return {
         status: 201,
         message: 'Usuario creado exitosamente',
+        token,
         user: {
           id: userData.id,
           email: userData.email,

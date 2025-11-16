@@ -50,9 +50,17 @@ export class CategoriesService {
   }
 
   async getAllCategories() {
-    return this.prisma.category.findMany({
-      orderBy: { created_at: 'desc' },
+    const categories = await this.prisma.category.findMany({
+      orderBy: { name: 'asc' },
     });
+    
+    // Mapear campos a formato camelCase para el frontend
+    return categories.map((cat) => ({
+      ...cat,
+      isActive: cat.is_active,
+      createdAt: cat.created_at,
+      updatedAt: cat.updated_at,
+    }));
   }
 
   async getCategoryById(id: string) {
@@ -176,9 +184,17 @@ export class CategoriesService {
   }
 
   async getActiveCategories() {
-    return this.prisma.category.findMany({
+    const categories = await this.prisma.category.findMany({
       where: { is_active: true },
       orderBy: { name: 'asc' },
     });
+    
+    // Mapear campos a formato camelCase para el frontend
+    return categories.map((cat) => ({
+      ...cat,
+      isActive: cat.is_active,
+      createdAt: cat.created_at,
+      updatedAt: cat.updated_at,
+    }));
   }
 }

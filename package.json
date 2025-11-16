@@ -37,6 +37,7 @@
     "class-validator": "^0.14.2",
     "jest-html-reporter": "^4.3.0",
     "jest-junit": "^16.0.0",
+    "pdfkit": "^0.15.2",
     "prisma": "^6.16.2",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1"
@@ -50,6 +51,7 @@
     "@types/express": "^5.0.0",
     "@types/jest": "^30.0.0",
     "@types/node": "^22.10.7",
+    "@types/pdfkit": "^0.13.0",
     "@types/supertest": "^6.0.2",
     "eslint": "^9.18.0",
     "eslint-config-prettier": "^10.0.1",

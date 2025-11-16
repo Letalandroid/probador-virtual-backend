@@ -9,12 +9,20 @@ export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getAllUsers() {
-    return this.prisma.user.findMany({
+    const users = await this.prisma.user.findMany({
       include: {
         roles: true,
         profile: true,
       },
     });
+
+    // Mapear usuarios para incluir campos en formato camelCase
+    return users.map((user) => ({
+      ...user,
+      createdAt: user.created_at,
+      updatedAt: user.updated_at,
+      role: user.roles[0]?.role || 'client',
+    }));
   }
 
   async getUserById(id: string) {
