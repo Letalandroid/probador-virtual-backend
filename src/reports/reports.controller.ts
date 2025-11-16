@@ -107,5 +107,133 @@ export class ReportsController {
       });
     }
   }
+
+  @Get('sales/pdf')
+  async getSalesPDF(@Res() res: Response) {
+    try {
+      const pdfBuffer = await this.reportsService.generatePDFReport('sales');
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', 'attachment; filename=analisis_ventas.pdf');
+      res.send(pdfBuffer);
+    } catch (error) {
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+        status: 500,
+        message: 'Error al generar el reporte PDF',
+        error: error.message,
+      });
+    }
+  }
+
+  @Get('sales/csv')
+  async getSalesCSV(@Res() res: Response) {
+    try {
+      const csv = await this.reportsService.generateCSVReport('sales');
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', 'attachment; filename=analisis_ventas.csv');
+      res.send(csv);
+    } catch (error) {
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+        status: 500,
+        message: 'Error al generar el reporte CSV',
+        error: error.message,
+      });
+    }
+  }
+
+  @Get('top-selling/pdf')
+  async getTopSellingPDF(@Res() res: Response) {
+    try {
+      const pdfBuffer = await this.reportsService.generatePDFReport('top-selling');
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', 'attachment; filename=productos_mas_vendidos.pdf');
+      res.send(pdfBuffer);
+    } catch (error) {
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+        status: 500,
+        message: 'Error al generar el reporte PDF',
+        error: error.message,
+      });
+    }
+  }
+
+  @Get('top-selling/csv')
+  async getTopSellingCSV(@Res() res: Response) {
+    try {
+      const csv = await this.reportsService.generateCSVReport('top-selling');
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', 'attachment; filename=productos_mas_vendidos.csv');
+      res.send(csv);
+    } catch (error) {
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+        status: 500,
+        message: 'Error al generar el reporte CSV',
+        error: error.message,
+      });
+    }
+  }
+
+  @Get('sales-trends/pdf')
+  async getSalesTrendsPDF(@Res() res: Response) {
+    try {
+      const pdfBuffer = await this.reportsService.generatePDFReport('sales-trends');
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', 'attachment; filename=tendencias_ventas.pdf');
+      res.send(pdfBuffer);
+    } catch (error) {
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+        status: 500,
+        message: 'Error al generar el reporte PDF',
+        error: error.message,
+      });
+    }
+  }
+
+  @Get('sales-trends/csv')
+  async getSalesTrendsCSV(@Res() res: Response) {
+    try {
+      const csv = await this.reportsService.generateCSVReport('sales-trends');
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', 'attachment; filename=tendencias_ventas.csv');
+      res.send(csv);
+    } catch (error) {
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+        status: 500,
+        message: 'Error al generar el reporte CSV',
+        error: error.message,
+      });
+    }
+  }
+
+  @Get('conversion-metrics/pdf')
+  async getConversionMetricsPDF(@Res() res: Response) {
+    try {
+      const pdfBuffer = await this.reportsService.generatePDFReport('conversion-metrics');
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', 'attachment; filename=metricas_conversion.pdf');
+      res.send(pdfBuffer);
+    } catch (error) {
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+        status: 500,
+        message: 'Error al generar el reporte PDF',
+        error: error.message,
+      });
+    }
+  }
+
+  @Get('conversion-metrics/csv')
+  async getConversionMetricsCSV(@Res() res: Response) {
+    try {
+      const csv = await this.reportsService.generateCSVReport('conversion-metrics');
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', 'attachment; filename=metricas_conversion.csv');
+      res.send(csv);
+    } catch (error) {
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+        status: 500,
+        message: 'Error al generar el reporte CSV',
+        error: error.message,
+      });
+    }
+  }
 }
 

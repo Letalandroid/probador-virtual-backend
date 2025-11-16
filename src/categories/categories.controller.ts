@@ -29,6 +29,7 @@ export class CategoriesController {
   }
 
   @Get()
+  @UseGuards(AuthGuard)
   async getAllCategories() {
     return this.categoriesService.getAllCategories();
   }
