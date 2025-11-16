@@ -97,21 +97,27 @@ export class UsersService {
 
   async changeUserRole(id: string, changeRoleDto: ChangeUserRoleDto) {
     try {
-      // Verificar que el usuario existe
-      const user = await this.prisma.user.findUnique({
+      // Usar upsert para actualizar o crear en una sola operación
+      // Primero verificar que el usuario existe
+      const userExists = await this.prisma.user.findUnique({
         where: { id },
-        include: { roles: true },
+        select: { id: true },
       });
 
-      if (!user) {
+      if (!userExists) {
         throw new NotFoundException({
           status: 404,
           message: 'Usuario no encontrado',
         });
       }
 
+      // Obtener el rol existente si existe
+      const existingRole = await this.prisma.userRoleAssignment.findFirst({
+        where: { user_id: id },
+        select: { id: true },
+      });
+
       // Actualizar o crear el rol
-      const existingRole = user.roles[0];
       if (existingRole) {
         await this.prisma.userRoleAssignment.update({
           where: { id: existingRole.id },

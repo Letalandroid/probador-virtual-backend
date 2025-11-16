@@ -9,18 +9,8 @@ export class ProductsService {
 
   async createProduct(createProductDto: CreateProductDto, userId: string) {
     try {
-      // Verificar que la categoría existe
-      const category = await this.prisma.category.findUnique({
-        where: { id: createProductDto.category_id },
-      });
-
-      if (!category) {
-        throw new NotFoundException({
-          status: 404,
-          message: 'Categoría no encontrada',
-        });
-      }
-
+      // Crear producto directamente, Prisma validará la foreign key de categoría
+      // Si la categoría no existe, lanzará error P2003
       const product = await this.prisma.product.create({
         data: {
           ...createProductDto,
@@ -36,6 +26,22 @@ export class ProductsService {
             },
           },
         },
+      }).catch((error) => {
+        if (error instanceof Prisma.PrismaClientKnownRequestError) {
+          if (error.code === 'P2003') {
+            throw new NotFoundException({
+              status: 404,
+              message: 'Categoría no encontrada',
+            });
+          }
+          if (error.code === 'P2002') {
+            throw new ConflictException({
+              status: 409,
+              message: 'Ya existe un producto con estos datos',
+            });
+          }
+        }
+        throw error;
       });
 
       return {
@@ -44,7 +50,7 @@ export class ProductsService {
         product,
       };
     } catch (error) {
-      if (error instanceof NotFoundException) {
+      if (error instanceof NotFoundException || error instanceof ConflictException) {
         throw error;
       }
       
@@ -137,28 +143,11 @@ export class ProductsService {
 
   async updateProduct(id: string, updateProductDto: UpdateProductDto, userId: string) {
     try {
-      // Verificar que el producto existe
-      const existingProduct = await this.prisma.product.findUnique({
-        where: { id },
-      });
-
-      if (!existingProduct) {
-        throw new NotFoundException({
-          status: 404,
-          message: 'Producto no encontrado',
-        });
-      }
-
-      // Verificar que el usuario es el creador o es admin
-      if (existingProduct.created_by !== userId) {
-        // Aquí podrías verificar si el usuario es admin
-        // Por ahora, solo permitimos al creador actualizar
-      }
-
-      // Si se está cambiando la categoría, verificar que existe
+      // Si se está cambiando la categoría, verificar que existe primero
       if (updateProductDto.category_id) {
         const category = await this.prisma.category.findUnique({
           where: { id: updateProductDto.category_id },
+          select: { id: true },
         });
 
         if (!category) {
@@ -169,6 +158,7 @@ export class ProductsService {
         }
       }
 
+      // Actualizar directamente (evita query redundante de verificación de producto)
       const product = await this.prisma.product.update({
         where: { id },
         data: updateProductDto,
@@ -182,6 +172,22 @@ export class ProductsService {
             },
           },
         },
+      }).catch((error) => {
+        if (error instanceof Prisma.PrismaClientKnownRequestError) {
+          if (error.code === 'P2025') {
+            throw new NotFoundException({
+              status: 404,
+              message: 'Producto no encontrado',
+            });
+          }
+          if (error.code === 'P2003') {
+            throw new NotFoundException({
+              status: 404,
+              message: 'Categoría no encontrada',
+            });
+          }
+        }
+        throw error;
       });
 
       return {
@@ -203,24 +209,7 @@ export class ProductsService {
 
   async deleteProduct(id: string, userId: string) {
     try {
-      // Verificar que el producto existe
-      const existingProduct = await this.prisma.product.findUnique({
-        where: { id },
-      });
-
-      if (!existingProduct) {
-        throw new NotFoundException({
-          status: 404,
-          message: 'Producto no encontrado',
-        });
-      }
-
-      // Verificar que el usuario es el creador o es admin
-      if (existingProduct.created_by !== userId) {
-        // Aquí podrías verificar si el usuario es admin
-        // Por ahora, solo permitimos al creador eliminar
-      }
-
+      // Eliminar directamente, Prisma lanzará error si no existe (evita query redundante)
       await this.prisma.product.delete({
         where: { id },
       });
@@ -230,8 +219,13 @@ export class ProductsService {
         message: 'Producto eliminado exitosamente',
       };
     } catch (error) {
-      if (error instanceof NotFoundException) {
-        throw error;
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        if (error.code === 'P2025') {
+          throw new NotFoundException({
+            status: 404,
+            message: 'Producto no encontrado',
+          });
+        }
       }
       
       throw new NotFoundException({
@@ -273,26 +267,35 @@ export class ProductsService {
 
   async updateProductStock(id: string, quantity: number) {
     try {
-      const product = await this.prisma.product.findUnique({
-        where: { id },
-      });
-
-      if (!product) {
-        throw new NotFoundException({
-          status: 404,
-          message: 'Producto no encontrado',
-        });
-      }
-
+      // Usar update con incremento directo en la base de datos (más eficiente)
       const updatedProduct = await this.prisma.product.update({
         where: { id },
         data: {
-          stock_quantity: Math.max(0, product.stock_quantity + quantity),
+          stock_quantity: {
+            increment: quantity,
+          },
         },
         include: {
           category: true,
         },
+      }).catch(async (error) => {
+        if (error.code === 'P2025') {
+          throw new NotFoundException({
+            status: 404,
+            message: 'Producto no encontrado',
+          });
+        }
+        throw error;
       });
+
+      // Asegurar que el stock no sea negativo
+      if (updatedProduct.stock_quantity < 0) {
+        await this.prisma.product.update({
+          where: { id },
+          data: { stock_quantity: 0 },
+        });
+        updatedProduct.stock_quantity = 0;
+      }
 
       return {
         status: 200,
