@@ -36,6 +36,5 @@ import { ReportsModule } from './reports/reports.module';
   ],
   controllers: [AppController],
   providers: [AppService, PrismaService],
-  imports: [AiModule],
 })
 export class AppModule {}
